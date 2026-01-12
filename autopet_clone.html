@@ -1,0 +1,1950 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Auto Pets Clone</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap');
+
+        :root {
+            --bg-sky: #87CEEB;
+            --bg-grass: #90EE90;
+            --card-width: 13vh; /* Responsive to height */
+            --card-height: 16vh;
+            --card-radius: 10px;
+            --font-main: 'Fredoka', 'Segoe UI', sans-serif;
+            
+            /* SAP Colors */
+            --c-atk: #e74c3c;
+            --c-hp: #f1c40f; 
+            --c-gold: #f1c40f;
+            --c-freeze: #74b9ff;
+            
+            --tier-1: #bdc3c7;
+            --tier-2: #3498db;
+            --tier-3: #9b59b6;
+            --tier-4: #e67e22;
+            --tier-5: #e74c3c;
+            --tier-6: #2ecc71;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: var(--font-main);
+            background: linear-gradient(to bottom, #87CEEB 40%, #8cc63f 40%);
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Top Bar */
+        #top-bar {
+            height: 12vh;
+            background: rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            align-items: center;
+            color: white;
+            text-shadow: 2px 2px 0 #000;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        
+        .stat-group {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #333;
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 2px solid #555;
+            font-size: 2.5vh;
+        }
+
+        /* Game Area */
+        #game-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            width: 100%;
+        }
+
+        /* Rows */
+        .row-container {
+            display: flex;
+            gap: 1.5vh;
+            padding: 1vh;
+            align-items: center;
+            justify-content: center;
+            min-height: 20vh;
+            width: 95%;
+        }
+        
+        #shop-view {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #shop-container, #shop-food-container {
+            background: #a1887f;
+            padding: 10px;
+            border-radius: 15px;
+            display: flex;
+            gap: 10px;
+            border: 3px solid #795548;
+            box-shadow: 0 4px 0 #5d4037;
+        }
+        
+        #shop-food-container {
+             margin-left: 20px;
+             border-left: none;
+             padding-left: 10px;
+        }
+
+        /* Cards */
+        .pet-card {
+            width: var(--card-width);
+            height: var(--card-height);
+            background: #fff;
+            border-radius: var(--card-radius);
+            position: relative;
+            cursor: pointer;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+            display: flex;
+            flex-direction: column;
+            border: 3px solid #fff;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        
+        .pet-card.selected {
+            border-color: #f1c40f;
+            box-shadow: 0 0 15px #f1c40f;
+            transform: translateY(-5px);
+        }
+        
+        .pet-card.frozen::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(135, 206, 250, 0.4);
+            border: 3px solid #3498db;
+            border-radius: var(--card-radius);
+            pointer-events: none;
+        }
+
+        .pet-bg {
+            height: 35%;
+            width: 100%;
+            border-bottom: 2px solid rgba(0,0,0,0.1);
+        }
+        
+        .pet-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        
+        .pet-emoji {
+            font-size: 6vh;
+            z-index: 1;
+        }
+        
+        .pet-item {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 2.5vh;
+            background: #fff;
+            border-radius: 50%;
+            width: 3vh;
+            height: 3vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 2px rgba(0,0,0,0.2);
+            z-index: 2;
+        }
+        
+        .pet-level {
+             position: absolute;
+             top: 2px;
+             left: 2px;
+             font-size: 1.5vh;
+             font-weight: bold;
+             color: #333;
+             background: rgba(255,255,255,0.8);
+             padding: 1px 4px;
+             border-radius: 4px;
+        }
+
+        .pet-stats {
+            height: 25%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 5px 5px 5px;
+            align-items: flex-end;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 0 #000;
+        }
+        
+        .stat-bubble {
+            width: 3.5vh;
+            height: 3.5vh;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2vh;
+            box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+            z-index: 2;
+        }
+        
+        .atk-bubble { background: var(--c-atk); }
+        .hp-bubble { background: var(--c-hp); }
+
+        /* Food Card */
+        .food-card {
+            width: var(--card-width);
+            height: var(--card-height);
+            background: #fff;
+            border-radius: var(--card-radius);
+            position: relative;
+            cursor: pointer;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+            border: 3px solid #fff;
+            transition: transform 0.1s;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        
+        .food-card.selected {
+            border-color: #f1c40f;
+            box-shadow: 0 0 15px #f1c40f;
+            transform: translateY(-5px);
+        }
+
+        .food-bg {
+            height: 45%;
+            width: 100%;
+            background: radial-gradient(circle at center, #ffeaa7 0%, #fab1a0 100%);
+            border-bottom: 2px solid rgba(0,0,0,0.1);
+        }
+
+        .food-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background: #fdfdfd;
+        }
+        
+        .food-emoji { 
+            font-size: 5vh; 
+            margin-top: -3vh;
+            filter: drop-shadow(0 2px 0 rgba(0,0,0,0.2));
+            z-index: 2;
+        }
+        
+        .food-cost { 
+            margin-top: 1vh; 
+            background: #f1c40f; 
+            color: #333; 
+            padding: 0.5vh 1.5vh; 
+            border-radius: 10px; 
+            font-size: 2vh; 
+            font-weight: bold;
+            box-shadow: 0 2px 0 rgba(0,0,0,0.1);
+        }
+        
+        .food-card.frozen::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(135, 206, 250, 0.4);
+            border: 3px solid #3498db;
+            border-radius: var(--card-radius);
+            pointer-events: none;
+        }
+        
+        .food-card.selected {
+             border-color: #f1c40f;
+             box-shadow: 0 0 10px #f1c40f;
+        }
+
+        /* Controls */
+        #controls-area {
+            height: 15vh;
+            width: 100%;
+            background: #8d6e63;
+            border-top: 5px solid #6d4c41;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            padding-bottom: 10px;
+            z-index: 10;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.3);
+        }
+        
+        .btn {
+            height: 8vh;
+            min-width: 8vh;
+            border: none;
+            border-radius: 15px;
+            font-family: var(--font-main);
+            font-weight: bold;
+            font-size: 2.5vh;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.3);
+            box-shadow: 0 6px 0 rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.2);
+            transition: all 0.1s;
+            padding: 0 20px;
+            position: relative;
+        }
+        
+        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+        
+        .btn-roll { background: #e67e22; }
+        .btn-end { background: #e74c3c; width: 15vh; }
+        .btn-sell { background: #f1c40f; color: #333; text-shadow: none; display: none; }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .modal-box {
+            background: #fff;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 80%;
+            width: 500px;
+            text-align: center;
+            box-shadow: 0 10px 0 rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .modal-title { font-size: 2rem; font-weight: bold; margin-bottom: 20px; }
+        .modal-btn { background: #2ecc71; color: white; padding: 10px 30px; border: none; border-radius: 10px; font-size: 1.2rem; cursor: pointer; margin-top: 20px; }
+
+        /* Animations */
+        @keyframes attackRight { 0% { transform: translateX(0); } 50% { transform: translateX(30px) rotate(10deg); } 100% { transform: translateX(0); } }
+        @keyframes attackLeft { 0% { transform: translateX(0); } 50% { transform: translateX(-30px) rotate(-10deg); } 100% { transform: translateX(0); } }
+        @keyframes hurt { 0% { transform: scale(1); filter: none; } 50% { transform: scale(0.9); filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5); } 100% { transform: scale(1); filter: none; } }
+        
+        .anim-attack-right { animation: attackRight 0.3s; }
+        .anim-attack-left { animation: attackLeft 0.3s; }
+        .anim-hurt { animation: hurt 0.4s; }
+
+        /* Tooltip */
+        #tooltip {
+            position: absolute;
+            background: #333;
+            color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+            max-width: 200px;
+            font-size: 14px;
+        }
+        
+        /* Mobile Landscape Optimization */
+        @media (max-width: 900px) and (orientation: landscape) {
+            :root {
+                --card-width: 14vh;
+                --card-height: 17vh;
+            }
+            .btn { font-size: 2vh; padding: 0 10px; }
+            #shop-container { gap: 5px; }
+            #shop-food-container { gap: 5px; margin-left: 10px; padding-left: 10px; }
+        }
+        
+        /* Overlay Message */
+        #message-overlay {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            color: white;
+            font-weight: bold;
+            text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 50;
+            text-align: center;
+        }
+        
+        .damage-number {
+             position: absolute;
+             color: red;
+             font-size: 2rem;
+             font-weight: bold;
+             text-shadow: 1px 1px 0 white;
+             z-index: 20;
+             animation: floatUp 1s forwards;
+        }
+        
+        @keyframes floatUp { to { transform: translateY(-50px); opacity: 0; } }
+        
+        .projectile {
+            position: absolute;
+            font-size: 2rem;
+            z-index: 100;
+            transition: all 0.5s linear;
+        }
+        .corner-btn-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .corner-btn {
+            width: 5vh;
+            height: 5vh;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5vh;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+        }
+        
+        .corner-btn:hover { background: white; color: #333; }
+
+    </style>
+</head>
+<body>
+
+    <div id="top-bar">
+        <div class="stat-group">
+            <div class="stat-box" title="生命值">❤️ <span id="lives">5</span></div>
+            <div class="stat-box" title="胜场">🏆 <span id="wins">0</span></div>
+            <div class="stat-box" title="回合数">⏳ <span id="turn">1</span></div>
+            <div class="stat-box" title="金币">💰 <span id="gold">10</span></div>
+        </div>
+        <div class="corner-btn-container">
+             <div class="corner-btn" id="btn-help" title="帮助">❓</div>
+             <div class="corner-btn" id="btn-settings" title="设置">⚙️</div>
+        </div>
+    </div>
+
+    <!-- Start Menu -->
+    <div id="start-menu" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title">🐶 Super Auto Pets Clone</div>
+            <div class="modal-text" style="text-align: center;">
+                欢迎来到经典自走棋！<br><br>
+                组建你的可爱动物战队。<br>
+                与其他队伍进行战斗。<br>
+                在失去5条生命之前赢得10场胜利！
+            </div>
+            <button class="modal-btn" id="btn-start-game">开始游戏</button>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('help-modal')">✖️</span>
+            <div class="modal-title">游戏玩法</div>
+            <div class="modal-text" style="max-height: 400px; overflow-y: auto;">
+                <b>商店阶段：</b><br>
+                - 花费3金币购买宠物或食物。<br>
+                - 花费1金币刷新商店。<br>
+                - 购买相同宠物合并升级（+1/+1 并增强技能）。<br>
+                - 出售宠物回收1金币（等级越高回收越多）。<br>
+                - 冻结商店物品以保留至下一回合。<br><br>
+                <b>战斗阶段：</b><br>
+                - 全自动战斗！<br>
+                - 最前方的宠物（右侧）先攻击。<br>
+                - 攻击力高造成更多伤害。<br>
+                - 存活到最后的队伍获胜。<br><br>
+                <b>目标：</b><br>
+                - 赢得10场胜利通关！
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('settings-modal')">✖️</span>
+            <div class="modal-title">设置</div>
+            <div class="modal-text" style="text-align: center;">
+                <label style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <input type="checkbox" id="chk-fast-mode"> 快速模式 (加速动画)
+                </label>
+                <br>
+                <button class="btn" style="background: #e74c3c; color: white; padding: 10px 20px; border-radius: 5px;" onclick="location.reload()">重新开始</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-area">
+        <div id="message-overlay">战斗开始!</div>
+        
+        <!-- Shop Mode -->
+        <div id="shop-view">
+            <div class="row-container">
+                <div id="shop-container" style="display: flex; gap: 15px;"></div>
+                <div id="shop-food-container" style="display: flex; gap: 15px;"></div>
+            </div>
+        </div>
+
+        <!-- Team Rows -->
+        <div class="row-container" id="battle-area" style="width: 100%; justify-content: space-between;">
+            <div id="team-container" style="display: flex; gap: 10px; justify-content: flex-end; flex-direction: row-reverse; width: 45%;"></div>
+            <div id="enemy-container" style="display: flex; gap: 10px; justify-content: flex-start; width: 45%;"></div>
+        </div>
+    </div>
+
+    <div id="controls-area">
+        <button id="btn-roll" class="btn btn-roll">🎲 刷新 (1)</button>
+        <button id="btn-freeze" class="btn" style="background: #74b9ff; color: white;">❄️ 冻结</button>
+        <button id="btn-sell" class="btn btn-sell">💰 出售</button>
+        <button id="btn-end" class="btn btn-end">⚔️ 结束回合</button>
+    </div>
+
+    <div id="tooltip"></div>
+
+    <script>
+        // --- Constants & Data ---
+        const TIERS = {
+            1: { color: '#bdc3c7', pets: ['ant', 'beaver', 'cricket', 'fish', 'mosquito', 'otter', 'horse', 'pig', 'duck'] },
+            2: { color: '#3498db', pets: ['crab', 'dodo', 'elephant', 'flamingo', 'hedgehog', 'peacock', 'rat', 'spider', 'swan', 'shrimp'] },
+            3: { color: '#9b59b6', pets: ['badger', 'camel', 'giraffe', 'kangaroo', 'ox', 'rabbit', 'sheep', 'snail', 'dog', 'blowfish'] },
+            4: { color: '#e67e22', pets: ['deer', 'dolphin', 'hippo', 'penguin', 'skunk'] },
+            5: { color: '#e74c3c', pets: ['crocodile', 'monkey', 'rhino', 'scorpion', 'shark'] },
+            6: { color: '#2ecc71', pets: ['boar', 'dragon', 'fly', 'mammoth', 'snake'] }
+        };
+
+        const PET_DATA = {
+            'ant': { name: '蚂蚁', emoji: '🐜', tier: 1, atk: 2, hp: 1, desc: '昏厥: 使一只随机友军 +2/+1 * 等级' },
+            'beaver': { name: '海狸', emoji: '🦫', tier: 1, atk: 3, hp: 2, desc: '出售: 使两只随机友军 +1 生命值 * 等级' },
+            'cricket': { name: '蟋蟀', emoji: '🦗', tier: 1, atk: 1, hp: 2, desc: '昏厥: 召唤一只 1/1 * 等级 的僵尸蟋蟀' },
+            'zombie_cricket': { name: '僵尸蟋蟀', emoji: '🧟', tier: 1, atk: 1, hp: 1, desc: '', token: true },
+            'fish': { name: '鱼', emoji: '🐟', tier: 1, atk: 2, hp: 2, desc: '升级: 使所有友军 +1/+1 * 等级' },
+            'mosquito': { name: '蚊子', emoji: '🦟', tier: 1, atk: 2, hp: 2, desc: '战斗开始: 对 1/2/3 个随机敌人造成 1 点伤害' },
+            'otter': { name: '水獭', emoji: '🦦', tier: 1, atk: 1, hp: 2, desc: '购买: 使一只随机友军 +1/+1 * 等级' },
+            'horse': { name: '马', emoji: '🐎', tier: 1, atk: 2, hp: 1, desc: '友军召唤: 直到战斗结束，使其 +1 攻击力 * 等级' },
+            'pig': { name: '猪', emoji: '🐖', tier: 1, atk: 4, hp: 1, desc: '出售: 额外获得 1 金币 * 等级' },
+            'duck': { name: '鸭子', emoji: '🦆', tier: 1, atk: 2, hp: 3, desc: '出售: 使商店宠物 +1 生命值 * 等级' },
+            
+            'crab': { name: '螃蟹', emoji: '🦀', tier: 2, atk: 3, hp: 1, desc: '战斗开始: 复制生命值最高的友军 50% 生命值 * 等级' },
+            'dodo': { name: '渡渡鸟', emoji: '🦤', tier: 2, atk: 2, hp: 3, desc: '战斗开始: 使前方友军获得自身 50% 攻击力 * 等级' },
+            'elephant': { name: '大象', emoji: '🐘', tier: 2, atk: 3, hp: 5, desc: '攻击前: 对后方 1/2/3 个友军造成 1 点伤害' },
+            'flamingo': { name: '火烈鸟', emoji: '🦩', tier: 2, atk: 4, hp: 2, desc: '昏厥: 使后方两只友军 +1/+1 * 等级' },
+            'hedgehog': { name: '刺猬', emoji: '🦔', tier: 2, atk: 3, hp: 2, desc: '昏厥: 对所有宠物造成 2 点伤害 * 等级' },
+            'peacock': { name: '孔雀', emoji: '🦚', tier: 2, atk: 2, hp: 5, desc: '受伤: 获得 +50% 攻击力 * 等级' },
+            'rat': { name: '老鼠', emoji: '🐀', tier: 2, atk: 4, hp: 5, desc: '昏厥: 在对方场上召唤一只 1/1 脏老鼠' },
+            'dirty_rat': { name: '脏老鼠', emoji: '🐁', tier: 1, atk: 1, hp: 1, desc: '占据对手的一个位置', token: true },
+            'spider': { name: '蜘蛛', emoji: '🕷️', tier: 2, atk: 2, hp: 2, desc: '昏厥: 召唤一只等级 1/2/3 的 3 阶宠物' },
+            'swan': { name: '天鹅', emoji: '🦢', tier: 2, atk: 1, hp: 3, desc: '回合开始: 获得 1 金币 * 等级' },
+            'shrimp': { name: '虾', emoji: '🦐', tier: 2, atk: 2, hp: 3, desc: '友军出售: 使一只随机友军 +1 生命值 * 等级' },
+
+            'bee': { name: '蜜蜂', emoji: '🐝', tier: 1, atk: 1, hp: 1, desc: '', token: true },
+            'ram': { name: '公羊', emoji: '🐏', tier: 3, atk: 2, hp: 2, desc: '', token: true },
+            
+            // Tier 3
+            'badger': { name: '獾', emoji: '🦡', tier: 3, atk: 5, hp: 4, desc: '昏厥: 对相邻宠物造成攻击力伤害' },
+            'camel': { name: '骆驼', emoji: '🐪', tier: 3, atk: 2, hp: 5, desc: '受伤: 使后方友军 +1/+2 * 等级' },
+            'giraffe': { name: '长颈鹿', emoji: '🦒', tier: 3, atk: 2, hp: 5, desc: '回合结束: 使前方友军 +1/+1 * 等级' },
+            'kangaroo': { name: '袋鼠', emoji: '🦘', tier: 3, atk: 1, hp: 2, desc: '前方友军攻击: 获得 +2/+2 * 等级' },
+            'ox': { name: '公牛', emoji: '🐂', tier: 3, atk: 1, hp: 4, desc: '前方友军昏厥: 获得西瓜甲并 +2 攻击力 * 等级' },
+            'rabbit': { name: '兔子', emoji: '🐇', tier: 3, atk: 3, hp: 2, desc: '友军吃食物: 使其 +1 生命值 * 等级' },
+            'sheep': { name: '绵羊', emoji: '🐑', tier: 3, atk: 2, hp: 2, desc: '昏厥: 召唤两只 2/2 公羊' },
+            'snail': { name: '蜗牛', emoji: '🐌', tier: 3, atk: 2, hp: 2, desc: '购买: 如果上一战失败，使所有友军 +1/+1 * 等级' },
+            'dog': { name: '狗', emoji: '🐕', tier: 3, atk: 3, hp: 3, desc: '友军召唤: 获得 +1/+1 * 等级' },
+            'blowfish': { name: '河豚', emoji: '🐡', tier: 3, atk: 3, hp: 5, desc: '受伤: 对一只随机敌人造成 2 点伤害 * 等级' },
+
+            // Tier 4
+            'deer': { name: '鹿', emoji: '🦌', tier: 4, atk: 1, hp: 1, desc: '昏厥: 召唤一只 5/5 的巴士' },
+            'bus': { name: '巴士', emoji: '🚌', tier: 1, atk: 5, hp: 5, desc: '攻击时对后方敌人造成伤害', token: true },
+            'dolphin': { name: '海豚', emoji: '🐬', tier: 4, atk: 4, hp: 6, desc: '战斗开始: 对生命值最低的敌人造成 5 点伤害 * 等级' },
+            'hippo': { name: '河马', emoji: '🦛', tier: 4, atk: 4, hp: 7, desc: '击杀: 获得 +3/+3 * 等级' },
+            'penguin': { name: '企鹅', emoji: '🐧', tier: 4, atk: 1, hp: 2, desc: '回合结束: 使其他等级 2 和 3 的友军 +1/+1 * 等级' },
+            'skunk': { name: '臭鼬', emoji: '🦨', tier: 4, atk: 3, hp: 6, desc: '战斗开始: 使生命值最高的敌人生命值减少 33% * 等级' },
+
+            // Tier 5
+            'crocodile': { name: '鳄鱼', emoji: '🐊', tier: 5, atk: 8, hp: 4, desc: '战斗开始: 对最后方敌人造成 8 点伤害 * 等级' },
+            'monkey': { name: '猴子', emoji: '🐒', tier: 5, atk: 1, hp: 2, desc: '回合结束: 使最前方的友军 +2/+3 * 等级' },
+            'rhino': { name: '犀牛', emoji: '🦏', tier: 5, atk: 5, hp: 8, desc: '击杀: 对第一个敌人造成 4 点伤害 * 等级' },
+            'scorpion': { name: '蝎子', emoji: '🦂', tier: 5, atk: 1, hp: 1, desc: '携带花生: 必定击杀受到伤害的敌人', defaultItem: 'peanut' },
+            'shark': { name: '鲨鱼', emoji: '🦈', tier: 5, atk: 4, hp: 4, desc: '友军昏厥: 获得 +2/+2 * 等级' },
+
+            // Tier 6
+            'boar': { name: '野猪', emoji: '🐗', tier: 6, atk: 10, hp: 6, desc: '攻击前: 获得 +4/+2 * 等级' },
+            'dragon': { name: '龙', emoji: '🐉', tier: 6, atk: 6, hp: 8, desc: '购买 1 阶宠物: 使所有友军 +1/+1 * 等级' },
+            'fly': { name: '苍蝇', emoji: '🪰', tier: 6, atk: 5, hp: 5, desc: '友军昏厥: 在该位置召唤一只 5/5 苍蝇 (每场战斗最多 3 次)' },
+            'zombie_fly': { name: '僵尸苍蝇', emoji: '🦟', tier: 1, atk: 5, hp: 5, desc: '', token: true },
+            'mammoth': { name: '猛犸象', emoji: '🦣', tier: 6, atk: 3, hp: 10, desc: '昏厥: 使所有友军 +2/+2 * 等级' },
+            'snake': { name: '蛇', emoji: '🐍', tier: 6, atk: 6, hp: 6, desc: '前方友军攻击: 对一只随机敌人造成 5 点伤害 * 等级' }
+        };
+
+        const FOOD_DATA = {
+            'apple': { name: '苹果', emoji: '🍎', cost: 3, desc: '使一只宠物 +1/+1' },
+            'honey': { name: '蜂蜜', emoji: '🍯', cost: 3, desc: '昏厥: 召唤一只 1/1 蜜蜂' },
+            'cupcake': { name: '杯子蛋糕', emoji: '🧁', cost: 3, desc: '直到战斗结束，使一只宠物 +3/+3' },
+            'meat': { name: '肉骨头', emoji: '🍖', cost: 3, desc: '攻击时额外造成 3 点伤害' },
+            'pill': { name: '安眠药', emoji: '💊', cost: 1, desc: '使一只宠物昏厥（永久）' },
+            'salad': { name: '沙拉', emoji: '🥗', cost: 3, desc: '使两只随机宠物 +1/+1' },
+            'garlic': { name: '大蒜', emoji: '🧄', cost: 3, desc: '受到的伤害减少 2 点' },
+            'chili': { name: '辣椒', emoji: '🌶️', cost: 3, desc: '攻击时对后方敌人造成 5 点伤害' },
+            'chocolate': { name: '巧克力', emoji: '🍫', cost: 3, desc: '使一只宠物获得 +1 经验值' },
+            'sushi': { name: '寿司', emoji: '🍣', cost: 3, desc: '使三只随机宠物 +1/+1' },
+            'melon': { name: '西瓜', emoji: '🍉', cost: 3, desc: '受到伤害时抵消 20 点伤害 (一次性)' },
+            'mushroom': { name: '蘑菇', emoji: '🍄', cost: 3, desc: '昏厥: 复活为 1/1' },
+            'steak': { name: '牛排', emoji: '🥩', cost: 3, desc: '攻击时额外造成 20 点伤害 (一次性)' },
+            'peanut': { name: '花生', emoji: '🥜', cost: 0, desc: '必定击杀受到伤害的敌人', token: true }
+        };
+
+        // --- Game Logic ---
+
+        class Pet {
+            constructor(id, dataId, xp = 0) {
+                this.id = id || Math.random().toString(36).substr(2, 9);
+                this.dataId = dataId;
+                const data = PET_DATA[dataId];
+                this.name = data.name;
+                this.emoji = data.emoji;
+                this.tier = data.tier;
+                this.baseAtk = data.atk;
+                this.baseHp = data.hp;
+                this.atk = data.atk;
+                this.hp = data.hp;
+                this.xp = xp;
+                this.level = this.getDisplayLevel();
+                this.item = data.defaultItem || null;
+                this.frozen = false;
+                
+                // Battle specific
+                this.tempAtk = 0;
+                this.tempHp = 0;
+            }
+
+            get totalAtk() { return Math.min(50, this.atk + this.tempAtk); }
+            get totalHp() { return Math.min(50, this.hp + this.tempHp); }
+            
+            getDisplayLevel() {
+                if (this.xp >= 5) return 3;
+                if (this.xp >= 2) return 2;
+                return 1;
+            }
+        }
+
+        class Game {
+            constructor() {
+                this.gold = 10;
+                this.lives = 5;
+                this.wins = 0;
+                this.turn = 1;
+                this.shopPets = [];
+                this.shopFood = [];
+                this.team = []; // Array of Pet objects (max 5)
+                this.enemyTeam = [];
+                
+                this.selectedShopItem = null; // { type: 'pet'|'food', index: 0 }
+                this.selectedTeamIndex = -1;
+                this.state = 'shop'; // shop, battle, anim
+                
+                this.lastBattleResult = null; // win, loss, draw
+
+                this.init();
+            }
+
+            init() {
+                this.rollShop();
+                this.onTurnStart();
+                this.render();
+                this.setupInputs();
+            }
+
+            // --- Shop Logic ---
+            
+            onTurnStart() {
+                // Swan
+                this.team.forEach(p => {
+                    if (p.dataId === 'swan') {
+                        this.gold += 1 * p.getDisplayLevel();
+                    }
+                });
+                this.render();
+            }
+
+            onTurnEnd() {
+                // End of turn triggers (Shop phase end)
+                // Monkey: Buff front friend
+                // Note: With flex-direction: row-reverse, index 0 is Visual Right (Front).
+                // So team[0] is the front-most pet.
+                this.team.forEach((p, index) => {
+                    if (p.dataId === 'monkey') {
+                        if (this.team.length > 0) {
+                             const frontPet = this.team[0]; // Front is index 0
+                             // Monkey buffs front friend. If Monkey IS front?
+                             // "Give front-most friend". Usually implies other? 
+                             // SAP Wiki: "Give right-most friend". If Monkey is right-most, it buffs itself? 
+                             // Usually "friend" means any ally including self unless specified "other".
+                             // But Monkey usually sits in back.
+                             // Let's assume index 0.
+                             frontPet.atk += 2 * p.getDisplayLevel();
+                             frontPet.hp += 3 * p.getDisplayLevel();
+                        }
+                    } else if (p.dataId === 'giraffe') {
+                        // Buff friend ahead (lower index)
+                        if (index > 0) {
+                            const friend = this.team[index - 1];
+                            friend.atk += 1 * p.getDisplayLevel();
+                            friend.hp += 1 * p.getDisplayLevel();
+                        }
+                    } else if (p.dataId === 'penguin') {
+                        // Buff other lvl 2/3 friends
+                        this.team.forEach(friend => {
+                            if (friend !== p && friend.getDisplayLevel() >= 2) {
+                                friend.atk += 1 * p.getDisplayLevel();
+                                friend.hp += 1 * p.getDisplayLevel();
+                            }
+                        });
+                    } else if (p.dataId === 'bison') {
+                        // If there is a level 3 friend
+                        const hasLvl3 = this.team.some(friend => friend !== p && friend.getDisplayLevel() === 3);
+                        if (hasLvl3) {
+                            p.atk += 2 * p.getDisplayLevel();
+                            p.hp += 2 * p.getDisplayLevel();
+                        }
+                    } else if (p.dataId === 'parrot') {
+                        // Copy ability of friend ahead
+                        // Not implemented yet
+                    }
+                });
+                this.render();
+            }
+
+            getShopTier() {
+                if (this.turn >= 11) return 6;
+                if (this.turn >= 9) return 5;
+                if (this.turn >= 7) return 4;
+                if (this.turn >= 5) return 3;
+                if (this.turn >= 3) return 2;
+                return 1;
+            }
+
+            rollShop() {
+                if (this.gold < 1 && this.shopPets.length > 0) return; // Can't roll
+                if (this.shopPets.length > 0) this.gold--; // Cost 1 to roll if not first load
+
+                // Clear unfrozen
+                this.shopPets = this.shopPets.filter(p => p.frozen);
+                this.shopFood = this.shopFood.filter(f => f.frozen);
+
+                const tier = this.getShopTier();
+                const petCount = 3 + (tier >= 3 ? 1 : 0) + (tier >= 5 ? 1 : 0); // 3, 4, 5 slots
+                const foodCount = 2;
+
+                // Fill Pets
+                while (this.shopPets.length < petCount) {
+                    const availableTiers = [];
+                    for(let t=1; t<=tier; t++) {
+                        if(TIERS[t] && TIERS[t].pets.length > 0) availableTiers.push(t);
+                    }
+                    if (availableTiers.length === 0) availableTiers.push(1); // Fallback
+
+                    const randomTier = availableTiers[Math.floor(Math.random() * availableTiers.length)];
+                    const petsInTier = TIERS[randomTier].pets;
+                    const randomPetId = petsInTier[Math.floor(Math.random() * petsInTier.length)];
+                    this.shopPets.push(new Pet(null, randomPetId));
+                }
+
+                // Fill Food
+                while (this.shopFood.length < foodCount) {
+                    const foods = Object.keys(FOOD_DATA);
+                    // Filter foods by tier? Simplified: all foods available for now or basic tier logic
+                    // Let's just pick random food
+                    const randomFood = foods[Math.floor(Math.random() * foods.length)];
+                    this.shopFood.push({ id: randomFood, frozen: false });
+                }
+
+                this.render();
+            }
+
+            // --- Actions ---
+
+            buyPet(shopIndex, teamIndex) {
+                if (this.gold < 3) return;
+                const pet = this.shopPets[shopIndex];
+                
+                // Merge logic
+                if (this.team[teamIndex]) {
+                    if (this.team[teamIndex].dataId === pet.dataId && this.team[teamIndex].xp < 5) {
+                        // Merge
+                        this.gold -= 3;
+                        const target = this.team[teamIndex];
+                        const oldLevel = target.getDisplayLevel();
+                        
+                        target.xp += 1;
+                        target.atk += 1;
+                        target.hp += 1;
+                        
+                        const newLevel = target.getDisplayLevel();
+                        
+                        // Level Up Trigger
+                        if (newLevel > oldLevel) {
+                            // Fish
+                             this.team.forEach(p => {
+                                 if (p.dataId === 'fish') {
+                                     this.team.forEach(friend => {
+                                         if (friend !== p) { 
+                                             friend.atk += 1 * p.getDisplayLevel(); 
+                                             friend.hp += 1 * p.getDisplayLevel(); 
+                                         }
+                                     });
+                                 }
+                             });
+                        }
+
+                        this.shopPets.splice(shopIndex, 1);
+                    }
+                    return;
+                }
+
+                // Place in empty slot
+                if (teamIndex >= 0 && teamIndex < 5 && !this.team[teamIndex]) {
+                    this.gold -= 3;
+                    this.team[teamIndex] = pet;
+                    this.shopPets.splice(shopIndex, 1);
+
+                    // Dragon Trigger (Buy Tier 1)
+                    if (pet.tier === 1) {
+                        this.team.forEach(p => {
+                            if (p.dataId === 'dragon') {
+                                this.team.forEach(friend => {
+                                    if (friend !== p) {
+                                        friend.atk += 1 * p.getDisplayLevel();
+                                        friend.hp += 1 * p.getDisplayLevel();
+                                    }
+                                });
+                            }
+                        });
+                    }
+
+                    // On Buy Triggers (Self)
+                    if (pet.dataId === 'otter') {
+                        const friends = this.team.filter(p => p !== pet);
+                        if (friends.length > 0) {
+                            const friend = friends[Math.floor(Math.random() * friends.length)];
+                            friend.atk += 1 * pet.getDisplayLevel();
+                            friend.hp += 1 * pet.getDisplayLevel();
+                        }
+                    } else if (pet.dataId === 'snail') {
+                        if (this.lastBattleResult === 'loss') {
+                             this.team.forEach(p => {
+                                 if (p !== pet) {
+                                     p.atk += 1 * pet.getDisplayLevel();
+                                     p.hp += 1 * pet.getDisplayLevel();
+                                 }
+                             });
+                        }
+                    }
+
+                    // On Friend Summoned Triggers (e.g., Horse, Dog)
+                    this.team.forEach(p => {
+                        if (p !== pet) {
+                            if (p.dataId === 'horse') {
+                                pet.tempAtk += 1 * p.getDisplayLevel();
+                            } else if (p.dataId === 'dog') {
+                                p.atk += 1 * p.getDisplayLevel();
+                                p.hp += 1 * p.getDisplayLevel();
+                            }
+                        }
+                    });
+                }
+                this.render();
+            }
+            
+            buyFood(shopIndex, teamIndex) {
+                if (this.gold < FOOD_DATA[this.shopFood[shopIndex].id].cost) return;
+                if (!this.team[teamIndex]) return;
+
+                const foodId = this.shopFood[shopIndex].id;
+                const pet = this.team[teamIndex];
+                const cost = FOOD_DATA[foodId].cost;
+
+                this.gold -= cost;
+                this.shopFood.splice(shopIndex, 1);
+
+                if (foodId === 'apple') {
+                    pet.atk += 1;
+                    pet.hp += 1;
+                } else if (foodId === 'cupcake') {
+                    pet.tempAtk += 3;
+                    pet.tempHp += 3;
+                } else if (foodId === 'meat') {
+                    pet.item = 'meat';
+                } else if (foodId === 'honey') {
+                    pet.item = 'honey';
+                } else if (foodId === 'garlic') {
+                    pet.item = 'garlic';
+                } else if (foodId === 'chili') {
+                    pet.item = 'chili';
+                } else if (foodId === 'melon') {
+                    pet.item = 'melon';
+                } else if (foodId === 'mushroom') {
+                    pet.item = 'mushroom';
+                } else if (foodId === 'steak') {
+                    pet.item = 'steak';
+                } else if (foodId === 'chocolate') {
+                    pet.xp += 1;
+                    pet.level = pet.getDisplayLevel();
+                } else if (foodId === 'sushi') {
+                    const friends = this.team.filter(p => p !== pet); // Sushi random friends? Description: "Give three random pets +1/+1". Including self? Yes usually.
+                    // But usually "random friends" implies others?
+                    // SAP Wiki: "Give 3 random pets +1/+1".
+                    // Let's assume including self is fine, or random from all.
+                    const targets = [...this.team];
+                    for(let k=0; k<3; k++) {
+                        if(targets.length > 0) {
+                            const r = Math.floor(Math.random()*targets.length);
+                            targets[r].atk += 1;
+                            targets[r].hp += 1;
+                            // Should we remove to ensure unique?
+                            // "Three random pets". Could be same? Usually distinct.
+                            targets.splice(r, 1);
+                        }
+                    }
+                } else if (foodId === 'salad') {
+                    const targets = [...this.team];
+                    // Pick 2 random unique
+                     for(let k=0; k<2; k++) {
+                        if(targets.length > 0) {
+                            const r = Math.floor(Math.random()*targets.length);
+                            targets[r].atk += 1;
+                            targets[r].hp += 1;
+                            targets.splice(r, 1);
+                        }
+                    }
+                } else if (foodId === 'pill') {
+                    const deadPet = this.team[teamIndex];
+                    this.team.splice(teamIndex, 1);
+                    // Trigger Faint (Permanent)
+                    if (deadPet.dataId === 'ant') {
+                         const friends = this.team;
+                         if (friends.length > 0) {
+                             const f = friends[Math.floor(Math.random() * friends.length)];
+                             f.atk += 2 * deadPet.getDisplayLevel();
+                             f.hp += 1 * deadPet.getDisplayLevel();
+                         }
+                    } else if (deadPet.dataId === 'spider') {
+                        // Spawn random Tier 3
+                        const tier3Pets = TIERS[3].pets;
+                        const randomId = tier3Pets[Math.floor(Math.random() * tier3Pets.length)];
+                        const summon = new Pet(null, randomId);
+                        summon.level = deadPet.getDisplayLevel(); // Spider spawns level 1/2/3? No, always level 1 usually, but description says "Level 1/2/3 Tier 3 pet"
+                        // Wait, Spider description: "Summon a level 1/2/3 tier 3 pet". So summon.xp needs to be set.
+                        // XP 0=Lv1, 2=Lv2, 5=Lv3
+                        if (deadPet.getDisplayLevel() === 2) summon.xp = 2;
+                        if (deadPet.getDisplayLevel() === 3) summon.xp = 5;
+                        
+                        this.team.splice(teamIndex, 0, summon);
+                    }
+                    // Rabbit triggers on food eat? Yes.
+                }
+                
+                // Rabbit Check
+                if (foodId !== 'pill') { // Pill kills, so rabbit might not trigger on dead? Or triggers before?
+                    // Rabbit says "Friend eats food".
+                    this.team.forEach(p => {
+                        if (p !== pet && p.dataId === 'rabbit') {
+                            pet.hp += 1 * p.getDisplayLevel();
+                        }
+                    });
+                }
+
+                this.render();
+            }
+
+            sellPet(index) {
+                const pet = this.team[index];
+                if (!pet) return;
+
+                let refund = pet.getDisplayLevel();
+                if (pet.dataId === 'pig') refund += pet.getDisplayLevel();
+                
+                if (pet.dataId === 'beaver') {
+                    const friends = this.team.filter((_, i) => i !== index);
+                    for (let k=0; k<2; k++) {
+                        if(friends.length > 0) {
+                            const r = Math.floor(Math.random()*friends.length);
+                            friends[r].hp += 1 * pet.getDisplayLevel();
+                        }
+                    }
+                }
+                
+                if (pet.dataId === 'duck') {
+                    this.shopPets.forEach(p => p.hp += 1 * pet.getDisplayLevel());
+                }
+                
+                // Trigger Shrimp
+                this.team.forEach(p => {
+                    if (p !== pet && p.dataId === 'shrimp') {
+                        const friends = this.team.filter(f => f !== pet && f !== p);
+                        if (friends.length > 0) {
+                            friends[Math.floor(Math.random() * friends.length)].hp += 1 * p.getDisplayLevel();
+                        }
+                    }
+                });
+
+                this.gold += refund;
+                this.team.splice(index, 1);
+                this.selectedTeamIndex = -1;
+                this.render();
+            }
+
+            freezeShopItem(type, index) {
+                if (type === 'pet') {
+                    this.shopPets[index].frozen = !this.shopPets[index].frozen;
+                } else {
+                    this.shopFood[index].frozen = !this.shopFood[index].frozen;
+                }
+                this.render();
+            }
+
+            movePet(fromIndex, toIndex) {
+                if (toIndex < 0 || toIndex >= 5 || fromIndex === toIndex) return;
+                
+                const target = this.team[toIndex];
+                const source = this.team[fromIndex];
+                
+                if (target && target.dataId === source.dataId && target.xp < 5) {
+                    // Merge
+                    target.xp += 1 + Math.floor(source.xp); // Merge XP
+                    target.atk = Math.max(target.atk, source.atk) + 1;
+                    target.hp = Math.max(target.hp, source.hp) + 1;
+                    this.team.splice(fromIndex, 1);
+                } else {
+                    // Swap
+                    while(this.team.length <= Math.max(fromIndex, toIndex)) this.team.push(null);
+                    const temp = this.team[toIndex];
+                    this.team[toIndex] = this.team[fromIndex];
+                    this.team[fromIndex] = temp;
+                    this.team = this.team.filter(p => p !== null);
+                }
+                
+                this.render();
+            }
+
+            startBattle() {
+                this.onTurnEnd();
+                this.state = 'battle';
+                this.enemyTeam = this.generateEnemyTeam();
+                
+                this.battleTeam = this.cloneTeam(this.team);
+                this.battleEnemyTeam = this.cloneTeam(this.enemyTeam);
+                
+                this.render();
+                
+                setTimeout(() => {
+                    new Battle(this, this.battleTeam, this.battleEnemyTeam).run();
+                }, 1000);
+            }
+
+            cloneTeam(team) {
+                return team.map(p => {
+                    const np = new Pet(null, p.dataId, p.xp);
+                    np.atk = p.atk;
+                    np.hp = p.hp;
+                    np.item = p.item;
+                    np.atk += p.tempAtk;
+                    np.hp += p.tempHp;
+                    return np;
+                });
+            }
+
+            generateEnemyTeam() {
+                const team = [];
+                const size = Math.min(5, Math.ceil(this.turn / 2) + 2);
+                const tier = Math.min(6, Math.floor(this.turn / 2) + 1);
+                
+                for(let i=0; i<size; i++) {
+                     const availableTiers = [];
+                    for(let t=1; t<=tier; t++) if(TIERS[t] && TIERS[t].pets.length > 0) availableTiers.push(t);
+                    if(availableTiers.length === 0) availableTiers.push(1);
+                    
+                    const randomTier = availableTiers[Math.floor(Math.random() * availableTiers.length)];
+                    const petsInTier = TIERS[randomTier].pets;
+                    const randomPetId = petsInTier[Math.floor(Math.random() * petsInTier.length)];
+                    const p = new Pet(null, randomPetId);
+                    p.atk += Math.floor(this.turn * 0.5);
+                    p.hp += Math.floor(this.turn * 0.5);
+                    team.push(p);
+                }
+                return team;
+            }
+
+            endBattle(result) {
+                this.lastBattleResult = result;
+                if (result === 'win') {
+                    this.wins++;
+                } else if (result === 'loss') {
+                    this.lives--;
+                }
+                
+                this.turn++;
+                this.gold = 10;
+                this.onTurnStart();
+                
+                this.team.forEach(p => {
+                    p.tempAtk = 0;
+                    p.tempHp = 0;
+                });
+
+                if (this.lives <= 0) {
+                    alert('游戏结束! 你输了。');
+                    location.reload();
+                } else if (this.wins >= 10) {
+                    alert('恭喜! 你赢得了10场胜利!');
+                    location.reload();
+                } else {
+                    this.state = 'shop';
+                    this.rollShop(); 
+                    this.render();
+                }
+            }
+            
+            render() {
+                renderGame(this);
+            }
+            
+            setupInputs() {
+            }
+        }
+
+        // --- Battle Engine ---
+
+        class Battle {
+            constructor(game, myTeam, enemyTeam) {
+                this.game = game;
+                this.myTeam = myTeam;
+                this.enemyTeam = enemyTeam;
+                this.log = [];
+            }
+
+            async run() {
+                // Start of Battle Triggers
+                await this.triggerAbility('start_of_battle', this.myTeam, this.enemyTeam);
+                await this.triggerAbility('start_of_battle', this.enemyTeam, this.myTeam);
+
+                // Battle Loop
+                while (this.myTeam.length > 0 && this.enemyTeam.length > 0) {
+                    await this.battleRound();
+                }
+
+                // End
+                let result = 'draw';
+                if (this.myTeam.length > 0) result = 'win';
+                if (this.enemyTeam.length > 0) result = 'loss';
+                
+                let resultText = "平局!";
+                if (result === 'win') resultText = "胜利!";
+                if (result === 'loss') resultText = "失败!";
+
+                showOverlay(resultText);
+                setTimeout(() => {
+                    this.game.endBattle(result);
+                }, 2000);
+            }
+
+            async battleRound() {
+                const p1 = this.myTeam[0];
+                const p2 = this.enemyTeam[0];
+
+                // Before Attack Triggers
+                await this.triggerAbility('before_attack', this.myTeam, this.enemyTeam, p1);
+                await this.triggerAbility('before_attack', this.enemyTeam, this.myTeam, p2);
+
+                // Friend Ahead Attack Triggers (Kangaroo, Snake)
+                // Trigger for pets behind p1/p2
+                await this.triggerAbility('friend_ahead_attack', this.myTeam, this.enemyTeam, p1);
+                await this.triggerAbility('friend_ahead_attack', this.enemyTeam, this.myTeam, p2);
+
+                await playAttackAnim(p1, p2);
+
+                let dmg1 = p1.totalAtk;
+                let dmg2 = p2.totalAtk;
+                
+                // Steak Logic
+                if (p1.item === 'steak') { dmg1 += 20; p1.item = null; }
+                if (p2.item === 'steak') { dmg2 += 20; p2.item = null; }
+
+                if (p1.item === 'meat') dmg1 += 3;
+                if (p2.item === 'meat') dmg2 += 3;
+
+                // Calculate actual damage (before applying)
+                let actualDmgToP1 = dmg2;
+                let actualDmgToP2 = dmg1;
+
+                if (p1.item === 'garlic') actualDmgToP1 = Math.max(1, actualDmgToP1 - 2);
+                if (p1.item === 'melon') {
+                    actualDmgToP1 = Math.max(0, actualDmgToP1 - 20);
+                    p1.item = null;
+                }
+                
+                if (p2.item === 'garlic') actualDmgToP2 = Math.max(1, actualDmgToP2 - 2);
+                if (p2.item === 'melon') {
+                    actualDmgToP2 = Math.max(0, actualDmgToP2 - 20);
+                    p2.item = null;
+                }
+
+                // Peanut Logic
+                if (p1.item === 'peanut' && actualDmgToP2 > 0) actualDmgToP2 = 9999;
+                if (p2.item === 'peanut' && actualDmgToP1 > 0) actualDmgToP1 = 9999;
+
+                // Chili Logic
+                if (p1.item === 'chili') {
+                    if (this.enemyTeam.length > 1) {
+                        const target = this.enemyTeam[1];
+                        let splash = 5;
+                        if (target.item === 'garlic') splash = Math.max(1, splash - 2);
+                        if (target.item === 'melon') { splash = Math.max(0, splash - 20); target.item = null; }
+                        target.hp -= splash;
+                        showDamage(target, splash);
+                    }
+                }
+                if (p2.item === 'chili') {
+                    if (this.myTeam.length > 1) {
+                        const target = this.myTeam[1];
+                        let splash = 5;
+                        if (target.item === 'garlic') splash = Math.max(1, splash - 2);
+                        if (target.item === 'melon') { splash = Math.max(0, splash - 20); target.item = null; }
+                        target.hp -= splash;
+                        showDamage(target, splash);
+                    }
+                }
+
+                p1.hp -= actualDmgToP1;
+                p2.hp -= actualDmgToP2;
+
+                showDamage(p1, actualDmgToP1);
+                showDamage(p2, actualDmgToP2);
+                
+                renderBattleTeams(this.myTeam, this.enemyTeam);
+                await sleep(500);
+
+                // Hurt Triggers
+                if (dmg2 > 0 && p1.hp > 0) await this.triggerAbility('hurt', this.myTeam, this.enemyTeam, p1);
+                if (dmg1 > 0 && p2.hp > 0) await this.triggerAbility('hurt', this.enemyTeam, this.myTeam, p2);
+
+                // Faint Check
+                const fainted1 = p1.hp <= 0;
+                const fainted2 = p2.hp <= 0;
+
+                // Knock Out Triggers
+                if (fainted1 && !fainted2) await this.triggerAbility('knock_out', this.enemyTeam, this.myTeam, p2);
+                if (fainted2 && !fainted1) await this.triggerAbility('knock_out', this.myTeam, this.enemyTeam, p1);
+
+                if (fainted1) await this.handleFaint(this.myTeam, 0, this.enemyTeam);
+                if (fainted2) await this.handleFaint(this.enemyTeam, 0, this.myTeam);
+            }
+
+            async handleFaint(team, index, otherTeam) {
+                const pet = team[index];
+                
+                let summon = null;
+                if (pet.dataId === 'cricket') {
+                    summon = new Pet(null, 'zombie_cricket');
+                    summon.atk = 1 * pet.getDisplayLevel();
+                    summon.hp = 1 * pet.getDisplayLevel();
+                } else if (pet.dataId === 'spider') {
+                    const tier3Pets = TIERS[3].pets;
+                    const randomId = tier3Pets[Math.floor(Math.random() * tier3Pets.length)];
+                    summon = new Pet(null, randomId);
+                    summon.atk = 2; summon.hp = 2; // Fixed 2/2 or actual stats? Spider spawns "2/2" stats regardless of unit? 
+                    // SAP: Spawns the unit with base stats? "Summon a level 1/2/3 tier 3 pet".
+                    // The summoned pet has its base stats.
+                    // Let's use base stats.
+                    const data = PET_DATA[randomId];
+                    summon.atk = data.atk; summon.hp = data.hp;
+                    summon.xp = (pet.getDisplayLevel() === 3 ? 5 : (pet.getDisplayLevel() === 2 ? 2 : 0));
+                } else if (pet.dataId === 'sheep') {
+                     // Summon 2 Rams. We only support 1 summon return here?
+                     // Need loop.
+                     // Handle manually here.
+                     // 2 Rams 2/2.
+                }
+
+                await this.triggerSpecificAbility(pet, 'faint', team, otherTeam);
+                
+                // Rat Faint (Dirty Rat on other team)
+                if (pet.dataId === 'rat') {
+                    if (otherTeam.length < 5) {
+                         const dr = new Pet(null, 'dirty_rat');
+                         otherTeam.push(dr); // Add to back? Front? 
+                         // Dirty Rat spawns at front (index 0)? "Opponent's side". Usually front.
+                         // But if space is full...
+                         // Let's push to front (index 0) for opponent?
+                         // In `team` array (reverse visual), index 0 is front.
+                         otherTeam.unshift(dr);
+                         // But array limit is 5.
+                         if (otherTeam.length > 5) otherTeam.pop();
+                    }
+                }
+
+                // Honey
+                if (pet.item === 'honey' && !summon) {
+                     summon = new Pet(null, 'bee');
+                }
+
+                // Mushroom
+                if (pet.item === 'mushroom' && !summon) {
+                    summon = new Pet(null, pet.dataId);
+                    summon.atk = 1; 
+                    summon.hp = 1;
+                    summon.xp = pet.xp;
+                    summon.level = pet.getDisplayLevel();
+                    summon.item = null;
+                }
+
+                // Deer
+                if (pet.dataId === 'deer' && !summon) {
+                    summon = new Pet(null, 'bus');
+                    summon.atk = 5 * pet.getDisplayLevel();
+                    summon.hp = 5 * pet.getDisplayLevel();
+                    summon.item = 'chili'; 
+                }
+
+                if (pet.dataId === 'sheep') {
+                     // Special case: Summon 2 rams
+                     team.splice(index, 1);
+                     for(let k=0; k<2; k++) {
+                         if (team.length < 5) {
+                             const ram = new Pet(null, 'ram');
+                             ram.atk = 2 * pet.getDisplayLevel(); ram.hp = 2 * pet.getDisplayLevel();
+                             team.splice(index, 0, ram);
+                         }
+                     }
+                } else if (summon) {
+                    team[index] = summon;
+                    await this.triggerAbility('summoned', team, otherTeam, summon);
+                } else {
+                     team.splice(index, 1);
+
+                     // Fly Check
+                     const flies = team.filter(p => p.dataId === 'fly');
+                     if (flies.length > 0 && team.length < 5) {
+                         const fly = flies[0];
+                         const zf = new Pet(null, 'zombie_fly');
+                         zf.atk = 5 * fly.getDisplayLevel();
+                         zf.hp = 5 * fly.getDisplayLevel();
+                         team.splice(index, 0, zf);
+                         await this.triggerAbility('summoned', team, otherTeam, zf);
+                     }
+                }
+                
+                renderBattleTeams(this.myTeam, this.enemyTeam);
+                await sleep(500);
+            }
+
+            async triggerAbility(trigger, team, otherTeam, specificPet = null) {
+                for (let i = 0; i < team.length; i++) {
+                    const pet = team[i];
+                    if (['before_attack', 'hurt'].includes(trigger)) {
+                         if (specificPet && pet !== specificPet) continue;
+                    }
+                    await this.triggerSpecificAbility(pet, trigger, team, otherTeam, specificPet);
+                }
+            }
+            
+            async triggerSpecificAbility(pet, trigger, team, otherTeam, contextPet = null) {
+                const data = PET_DATA[pet.dataId];
+                if (!data) return;
+                
+                if (trigger === 'summoned') {
+                    if (pet.dataId === 'horse' && pet !== contextPet) { 
+                         if (contextPet) {
+                             contextPet.tempAtk += 1 * pet.getDisplayLevel();
+                         }
+                    } else if (pet.dataId === 'dog' && pet !== contextPet) {
+                        pet.atk += 1 * pet.getDisplayLevel();
+                        pet.hp += 1 * pet.getDisplayLevel();
+                    }
+                }
+                
+                if (trigger === 'start_of_battle') {
+                    if (pet.dataId === 'mosquito') {
+                        const num = pet.getDisplayLevel();
+                        for(let k=0; k<num; k++) {
+                            if (otherTeam.length > 0) {
+                                const alive = otherTeam.filter(p => p.hp > 0);
+                                if (alive.length > 0) {
+                                    const target = alive[Math.floor(Math.random() * alive.length)];
+                                    target.hp -= 1;
+                                    showDamage(target, 1);
+                                    createProjectile(pet, target, 'rock');
+                                    await sleep(200);
+                                }
+                            }
+                        }
+                    } else if (pet.dataId === 'crab') {
+                        const idx = team.indexOf(pet);
+                        // Copy max HP friend
+                        let maxHp = 0;
+                        team.forEach(p => { if (p !== pet) maxHp = Math.max(maxHp, p.totalHp); });
+                        if (maxHp > 0) {
+                            pet.hp = Math.floor(maxHp * (0.5 * pet.getDisplayLevel())); 
+                        }
+                    } else if (pet.dataId === 'dodo') {
+                         const idx = team.indexOf(pet);
+                         if (idx > 0) {
+                             const friend = team[idx-1];
+                             friend.atk += Math.floor(pet.totalAtk * (0.5 * pet.getDisplayLevel()));
+                         }
+                    } else if (pet.dataId === 'skunk') {
+                        if (otherTeam.length > 0) {
+                            // Highest HP enemy
+                            let target = otherTeam[0];
+                            let maxHp = -1;
+                            otherTeam.forEach(p => {
+                                if (p.hp > maxHp && p.hp > 0) { maxHp = p.hp; target = p; }
+                            });
+                            
+                            if (target) {
+                                target.hp = Math.max(1, Math.floor(target.hp * (1 - 0.33 * pet.getDisplayLevel())));
+                                showDamage(target, 0); 
+                            }
+                        }
+                    } else if (pet.dataId === 'dolphin') {
+                         if (otherTeam.length > 0) {
+                            // Lowest HP enemy
+                            let target = otherTeam[0];
+                            let minHp = 9999;
+                            otherTeam.forEach(p => {
+                                if (p.hp < minHp && p.hp > 0) { minHp = p.hp; target = p; }
+                            });
+                            
+                            if (target) {
+                                const dmg = 5 * pet.getDisplayLevel();
+                                target.hp -= dmg;
+                                showDamage(target, dmg);
+                                createProjectile(pet, target, 'rock');
+                            }
+                         }
+                    } else if (pet.dataId === 'crocodile') {
+                         if (otherTeam.length > 0) {
+                             const target = otherTeam[otherTeam.length - 1];
+                             const dmg = 8 * pet.getDisplayLevel();
+                             target.hp -= dmg;
+                             showDamage(target, dmg);
+                             createProjectile(pet, target, 'rock');
+                         }
+                    } else if (pet.dataId === 'leopard') {
+                        if (otherTeam.length > 0) {
+                            // Deal 50% Attack to level targets
+                            const targets = [];
+                            const count = pet.getDisplayLevel();
+                            const indices = otherTeam.map((_, i) => i);
+                            for(let i=0; i<count; i++) {
+                                if (indices.length === 0) break;
+                                const rnd = Math.floor(Math.random() * indices.length);
+                                const idx = indices.splice(rnd, 1)[0];
+                                targets.push(otherTeam[idx]);
+                            }
+
+                            targets.forEach(target => {
+                                const dmg = Math.floor(pet.totalAtk * 0.5);
+                                target.hp -= dmg;
+                                showDamage(target, dmg);
+                                createProjectile(pet, target, 'rock');
+                            });
+                        }
+                    }
+                }
+                
+                if (trigger === 'hurt') {
+                    if (pet.dataId === 'peacock') {
+                        pet.atk += Math.floor(pet.atk * 0.5 * pet.getDisplayLevel());
+                    } else if (pet.dataId === 'blowfish') {
+                         const num = 1; // Always 1 enemy? Or scales dmg? "Deal 2 damage * Lvl".
+                         if (otherTeam.length > 0) {
+                             const t = otherTeam[Math.floor(Math.random() * otherTeam.length)];
+                             t.hp -= 2 * pet.getDisplayLevel();
+                             showDamage(t, 2 * pet.getDisplayLevel());
+                         }
+                    } else if (pet.dataId === 'camel') {
+                         const idx = team.indexOf(pet);
+                         if (idx < team.length - 1) {
+                             const friend = team[idx+1];
+                             friend.atk += 1 * pet.getDisplayLevel();
+                             friend.hp += 2 * pet.getDisplayLevel();
+                         }
+                    }
+                }
+                
+                if (trigger === 'before_attack') {
+                     if (pet.dataId === 'elephant') {
+                         const idx = team.indexOf(pet);
+                         const num = pet.getDisplayLevel();
+                         for (let k=1; k<=num; k++) {
+                             if (idx + k < team.length) {
+                                 const friend = team[idx+k];
+                                 friend.hp -= 1;
+                                 showDamage(friend, 1);
+                                 await this.triggerSpecificAbility(friend, 'hurt', team, otherTeam);
+                             }
+                         }
+                     } else if (pet.dataId === 'boar') {
+                         pet.atk += 2 * pet.getDisplayLevel();
+                         pet.hp += 2 * pet.getDisplayLevel();
+                     }
+                }
+
+                if (trigger === 'friend_ahead_attack') {
+                     if (pet.dataId === 'kangaroo') {
+                         if (contextPet && team.indexOf(contextPet) === team.indexOf(pet) - 1) {
+                             pet.atk += 2 * pet.getDisplayLevel();
+                             pet.hp += 2 * pet.getDisplayLevel();
+                         }
+                     } else if (pet.dataId === 'snake') {
+                         if (contextPet && team.indexOf(contextPet) === team.indexOf(pet) - 1) {
+                             if (otherTeam.length > 0) {
+                                 const target = otherTeam[Math.floor(Math.random() * otherTeam.length)];
+                                 target.hp -= 5 * pet.getDisplayLevel();
+                                 showDamage(target, 5 * pet.getDisplayLevel());
+                                 createProjectile(pet, target, 'rock');
+                             }
+                         }
+                     }
+                }
+                
+                if (trigger === 'knock_out') {
+                    if (pet.dataId === 'hippo') {
+                        pet.atk += 2 * pet.getDisplayLevel();
+                        pet.hp += 2 * pet.getDisplayLevel();
+                    } else if (pet.dataId === 'rhino') {
+                        if (otherTeam.length > 0) {
+                            const target = otherTeam[0];
+                            target.hp -= 4 * pet.getDisplayLevel();
+                            showDamage(target, 4 * pet.getDisplayLevel());
+                        }
+                    }
+                }
+
+                if (trigger === 'faint') {
+                    if (pet.dataId === 'ant') {
+                        const friends = team.filter(p => p !== pet && p.hp > 0); 
+                        if (friends.length > 0) {
+                            const f = friends[Math.floor(Math.random() * friends.length)];
+                            f.atk += 2 * pet.getDisplayLevel();
+                            f.hp += 1 * pet.getDisplayLevel();
+                        }
+                    } else if (pet.dataId === 'hedgehog') {
+                        [...team, ...otherTeam].forEach(p => {
+                            if (p !== pet && p.hp > 0) {
+                                p.hp -= 2 * pet.getDisplayLevel();
+                                showDamage(p, 2 * pet.getDisplayLevel());
+                            }
+                        });
+                    } else if (pet.dataId === 'flamingo') {
+                         const idx = team.indexOf(pet);
+                         for (let k=1; k<=2; k++) {
+                             if (idx + k < team.length) {
+                                 const f = team[idx+k];
+                                 f.atk += 1 * pet.getDisplayLevel();
+                                 f.hp += 1 * pet.getDisplayLevel();
+                             }
+                         }
+                    } else if (pet.dataId === 'badger') {
+                        const idx = team.indexOf(pet);
+                        const dmg = pet.atk;
+                        // Friend behind
+                        if (idx < team.length - 1) {
+                            team[idx+1].hp -= dmg;
+                            showDamage(team[idx+1], dmg);
+                        }
+                        // Enemy ahead (if at front)
+                        // If Badger faints, it might be at front.
+                        // But fainting happens after damage.
+                        // If it was at front, enemy is at front of other team.
+                        if (idx === 0 && otherTeam.length > 0) {
+                            otherTeam[0].hp -= dmg;
+                             showDamage(otherTeam[0], dmg);
+                        }
+                    } else if (pet.dataId === 'mammoth') {
+                        team.forEach(p => {
+                            if (p !== pet && p.hp > 0) {
+                                p.atk += 2 * pet.getDisplayLevel();
+                                p.hp += 2 * pet.getDisplayLevel();
+                            }
+                        });
+                    }
+                    
+                    await this.triggerAbility('friend_faints', team, otherTeam, pet);
+                }
+                
+                if (trigger === 'friend_faints') {
+                    // pet is the observer, contextPet is the fainted one
+                    if (pet.dataId === 'ox') {
+                         if (team.indexOf(contextPet) === team.indexOf(pet) - 1) {
+                             pet.atk += 2 * pet.getDisplayLevel();
+                             pet.item = 'melon'; 
+                         }
+                    } else if (pet.dataId === 'shark') {
+                        pet.atk += 2 * pet.getDisplayLevel();
+                        pet.hp += 2 * pet.getDisplayLevel();
+                    }
+                }
+            }
+        }
+
+        // --- Render Functions ---
+
+        const game = new Game();
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+        
+        document.getElementById('btn-start-game').onclick = () => {
+            document.getElementById('start-menu').style.display = 'none';
+        };
+
+        document.getElementById('btn-help').onclick = () => document.getElementById('help-modal').style.display = 'flex';
+        document.getElementById('btn-settings').onclick = () => document.getElementById('settings-modal').style.display = 'flex';
+        
+        let fastMode = false;
+        document.getElementById('chk-fast-mode').onchange = (e) => fastMode = e.target.checked;
+
+        function renderGame(g) {
+            document.getElementById('lives').innerText = g.lives;
+            document.getElementById('gold').innerText = g.gold;
+            document.getElementById('turn').innerText = g.turn;
+            document.getElementById('wins').innerText = g.wins;
+
+            const shopContainer = document.getElementById('shop-container');
+            shopContainer.innerHTML = '';
+            
+            if (g.state === 'shop') {
+                document.getElementById('shop-view').style.display = 'block';
+                document.getElementById('enemy-container').style.display = 'none';
+                document.getElementById('controls-area').style.display = 'flex';
+                
+                g.shopPets.forEach((pet, index) => {
+                    const card = createPetCard(g, pet, index, 'shop');
+                    shopContainer.appendChild(card);
+                });
+
+                const shopFoodContainer = document.getElementById('shop-food-container');
+                shopFoodContainer.innerHTML = '';
+                g.shopFood.forEach((food, index) => {
+                    const card = createFoodCard(g, food, index);
+                    shopFoodContainer.appendChild(card);
+                });
+            } else {
+                document.getElementById('shop-view').style.display = 'none';
+                document.getElementById('enemy-container').style.display = 'flex';
+                document.getElementById('controls-area').style.display = 'none';
+            }
+
+            const teamContainer = document.getElementById('team-container');
+            teamContainer.innerHTML = '';
+            for(let i=0; i<5; i++) {
+                const pet = g.team[i];
+                if (pet) {
+                    const card = createPetCard(g, pet, i, 'team');
+                    teamContainer.appendChild(card);
+                } else {
+                    const slot = document.createElement('div');
+                    slot.className = 'pet-card';
+                    slot.style.opacity = '0.3';
+                    slot.style.border = '2px dashed #aaa';
+                    slot.style.background = 'transparent';
+                    slot.onclick = () => onSlotClick(i);
+                    teamContainer.appendChild(slot);
+                }
+            }
+
+            if (g.state === 'battle') {
+                renderBattleTeams(g.battleTeam, g.battleEnemyTeam);
+            }
+        }
+
+        function renderBattleTeams(myTeam, enemyTeam) {
+            const teamContainer = document.getElementById('team-container');
+            teamContainer.innerHTML = '';
+            myTeam.forEach((pet, i) => {
+                teamContainer.appendChild(createPetCard(null, pet, i, 'battle-mine'));
+            });
+
+            const enemyContainer = document.getElementById('enemy-container');
+            enemyContainer.innerHTML = '';
+            enemyTeam.forEach((pet, i) => {
+                enemyContainer.appendChild(createPetCard(null, pet, i, 'battle-enemy'));
+            });
+        }
+
+        function createPetCard(g, pet, index, context) {
+            const div = document.createElement('div');
+            div.className = `pet-card ${pet.frozen ? 'frozen' : ''}`;
+            if (g && context === 'team' && g.selectedTeamIndex === index) div.classList.add('selected');
+            if (g && context === 'shop' && g.selectedShopItem && g.selectedShopItem.type === 'pet' && g.selectedShopItem.index === index) div.classList.add('selected');
+
+            div.innerHTML = `
+                <div class="pet-bg" style="background-color: ${TIERS[pet.tier]?.color || '#ccc'};"></div>
+                <div class="pet-content">
+                    <div class="pet-emoji">${pet.emoji}</div>
+                </div>
+                <div class="pet-level">Lv ${pet.getDisplayLevel()}</div>
+                ${pet.item ? `<div class="pet-item">${FOOD_DATA[pet.item] ? FOOD_DATA[pet.item].emoji : ''}</div>` : ''}
+                <div class="pet-stats">
+                    <div class="stat-bubble atk-bubble">${pet.totalAtk}</div>
+                    <div class="stat-bubble hp-bubble">${pet.totalHp}</div>
+                </div>
+            `;
+
+            div.onmouseenter = (e) => showTooltip(e, PET_DATA[pet.dataId].desc);
+            div.onmouseleave = hideTooltip;
+
+            div.onclick = () => {
+                if (context === 'shop') onShopPetClick(index);
+                if (context === 'team') onTeamPetClick(index);
+            };
+
+            return div;
+        }
+        
+        function createFoodCard(g, foodItem, index) {
+            const data = FOOD_DATA[foodItem.id];
+            const div = document.createElement('div');
+            div.className = `food-card ${foodItem.frozen ? 'frozen' : ''}`;
+            if (g && g.selectedShopItem && g.selectedShopItem.type === 'food' && g.selectedShopItem.index === index) div.classList.add('selected');
+            
+            div.innerHTML = `
+                <div class="food-bg"></div>
+                <div class="food-content">
+                    <div class="food-emoji">${data.emoji}</div>
+                    <div class="food-cost">💰${data.cost}</div>
+                </div>
+            `;
+            
+            div.onmouseenter = (e) => showTooltip(e, data.desc);
+            div.onmouseleave = hideTooltip;
+            div.onclick = () => onShopFoodClick(index);
+            
+            return div;
+        }
+
+        function onShopPetClick(index) {
+            if (game.selectedShopItem && game.selectedShopItem.type === 'pet' && game.selectedShopItem.index === index) {
+                game.selectedShopItem = null;
+            } else {
+                game.selectedShopItem = { type: 'pet', index };
+                game.selectedTeamIndex = -1;
+            }
+            game.render();
+        }
+
+        function onShopFoodClick(index) {
+            if (game.selectedShopItem && game.selectedShopItem.type === 'food' && game.selectedShopItem.index === index) {
+                game.selectedShopItem = null;
+            } else {
+                game.selectedShopItem = { type: 'food', index };
+                game.selectedTeamIndex = -1;
+            }
+            game.render();
+        }
+
+        function onTeamPetClick(index) {
+            if (game.selectedShopItem) {
+                if (game.selectedShopItem.type === 'pet') {
+                    game.buyPet(game.selectedShopItem.index, index);
+                } else {
+                    game.buyFood(game.selectedShopItem.index, index);
+                }
+                game.selectedShopItem = null;
+            } else {
+                if (game.selectedTeamIndex === index) {
+                    game.selectedTeamIndex = -1;
+                } else if (game.selectedTeamIndex !== -1) {
+                    game.movePet(game.selectedTeamIndex, index);
+                    game.selectedTeamIndex = -1;
+                } else {
+                    game.selectedTeamIndex = index;
+                }
+            }
+            
+            const btnSell = document.getElementById('btn-sell');
+            btnSell.style.display = game.selectedTeamIndex !== -1 ? 'flex' : 'none';
+            
+            game.render();
+        }
+
+        function onSlotClick(index) {
+            if (game.selectedShopItem && game.selectedShopItem.type === 'pet') {
+                game.buyPet(game.selectedShopItem.index, index);
+                game.selectedShopItem = null;
+            } else if (game.selectedTeamIndex !== -1) {
+                game.movePet(game.selectedTeamIndex, index);
+                game.selectedTeamIndex = -1;
+            }
+            game.render();
+        }
+
+        document.getElementById('btn-roll').onclick = () => game.rollShop();
+        document.getElementById('btn-end').onclick = () => game.startBattle();
+        document.getElementById('btn-sell').onclick = () => game.sellPet(game.selectedTeamIndex);
+        document.getElementById('btn-freeze').onclick = () => {
+            if (game.selectedShopItem) {
+                game.freezeShopItem(game.selectedShopItem.type, game.selectedShopItem.index);
+            }
+        };
+
+        function sleep(ms) { 
+            if (fastMode) return new Promise(r => setTimeout(r, ms / 2));
+            return new Promise(r => setTimeout(r, ms)); 
+        }
+
+        function showTooltip(e, text) {
+            const tt = document.getElementById('tooltip');
+            tt.innerText = text;
+            tt.style.display = 'block';
+            tt.style.left = e.pageX + 10 + 'px';
+            tt.style.top = e.pageY + 10 + 'px';
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').style.display = 'none';
+        }
+
+        function showOverlay(text) {
+            const ov = document.getElementById('message-overlay');
+            ov.innerText = text;
+            ov.style.opacity = 1;
+            setTimeout(() => ov.style.opacity = 0, 1500);
+        }
+
+        async function playAttackAnim(p1, p2) {
+            const teamContainer = document.getElementById('team-container');
+            const enemyContainer = document.getElementById('enemy-container');
+            
+            const card1 = teamContainer.children[0];
+            const card2 = enemyContainer.children[0];
+            
+            if(card1) card1.classList.add('anim-attack-right');
+            if(card2) card2.classList.add('anim-attack-left');
+            
+            await sleep(300);
+            
+            if(card1) card1.classList.remove('anim-attack-right');
+            if(card2) card2.classList.remove('anim-attack-left');
+            
+            if(card1) card1.classList.add('anim-hurt');
+            if(card2) card2.classList.add('anim-hurt');
+            
+            await sleep(400);
+             if(card1) card1.classList.remove('anim-hurt');
+            if(card2) card2.classList.remove('anim-hurt');
+        }
+        
+        function showDamage(pet, dmg) {
+            let container = null;
+            let index = -1;
+            
+            if (game.battleTeam.includes(pet)) {
+                container = document.getElementById('team-container');
+                index = game.battleTeam.indexOf(pet);
+            } else if (game.battleEnemyTeam.includes(pet)) {
+                container = document.getElementById('enemy-container');
+                index = game.battleEnemyTeam.indexOf(pet);
+            }
+            
+            if (container && container.children[index]) {
+                const card = container.children[index];
+                const dmgEl = document.createElement('div');
+                dmgEl.className = 'damage-number';
+                dmgEl.innerText = `-${dmg}`;
+                dmgEl.style.left = '30%';
+                dmgEl.style.top = '20%';
+                card.appendChild(dmgEl);
+                setTimeout(() => dmgEl.remove(), 1000);
+            }
+        }
+        
+        function createProjectile(fromPet, toPet, type) {
+             let fromEl, toEl;
+             
+             if (game.battleTeam.includes(fromPet)) {
+                 fromEl = document.getElementById('team-container').children[game.battleTeam.indexOf(fromPet)];
+             } else {
+                 fromEl = document.getElementById('enemy-container').children[game.battleEnemyTeam.indexOf(fromPet)];
+             }
+             
+             if (game.battleTeam.includes(toPet)) {
+                 toEl = document.getElementById('team-container').children[game.battleTeam.indexOf(toPet)];
+             } else {
+                 toEl = document.getElementById('enemy-container').children[game.battleEnemyTeam.indexOf(toPet)];
+             }
+             
+             if (!fromEl || !toEl) return;
+             
+             const rect1 = fromEl.getBoundingClientRect();
+             const rect2 = toEl.getBoundingClientRect();
+             
+             const p = document.createElement('div');
+             p.className = 'projectile';
+             p.innerText = '🪨';
+             p.style.left = rect1.left + rect1.width/2 + 'px';
+             p.style.top = rect1.top + 'px';
+             document.body.appendChild(p);
+             
+             setTimeout(() => {
+                 p.style.left = rect2.left + rect2.width/2 + 'px';
+                 p.style.top = rect2.top + 'px';
+             }, 50);
+             
+             setTimeout(() => p.remove(), 550);
+        }
+
+    </script>
+</body>
+</html>
