@@ -816,7 +816,7 @@
                 this.turn = 1;
                 this.shopPets = [];
                 this.shopFood = [];
-                this.team = []; // Array of Pet objects (max 5)
+                this.team = [null, null, null, null, null]; // Fixed 5 slots
                 this.enemyTeam = [];
                 
                 this.selectedShopItem = null; // { type: 'pet'|'food', index: 0 }
@@ -840,7 +840,7 @@
             onTurnStart() {
                 // Swan
                 this.team.forEach(p => {
-                    if (p.dataId === 'swan') {
+                    if (p && p.dataId === 'swan') {
                         this.gold += 1 * p.getDisplayLevel();
                     }
                 });
@@ -850,21 +850,11 @@
             onTurnEnd() {
                 // End of Turn Triggers (Shop Phase)
                 this.team.forEach((pet, index) => {
+                     if (!pet) return;
+
                      // Giraffe: Buff friend ahead
                      if (pet.dataId === 'giraffe') {
-                         // In array, index 0 is right-most (front). 
-                         // Wait, in my render: row-reverse. index 0 is right-most.
-                         // "Ahead" means index-1? No, if 0 is front, there is no index -1.
-                         // Let's check render. 
-                         // <div id="team-container" ... flex-direction: row-reverse; ...>
-                         // So index 0 is rendered on the right.
-                         // Index 1 is to the left of 0.
-                         // "Ahead" usually means towards the enemy.
-                         // If 0 is front, nobody is ahead of 0.
-                         // 0 is ahead of 1.
-                         // So "Friend ahead" for index 1 is index 0.
-                         // So "Friend ahead" is index - 1.
-                         if (index > 0) {
+                         if (index > 0 && this.team[index-1]) {
                              const friend = this.team[index-1];
                              friend.atk += 1 * pet.getDisplayLevel();
                              friend.hp += 1 * pet.getDisplayLevel();
@@ -872,15 +862,15 @@
                      }
                      // Monkey: Buff front-most friend
                      else if (pet.dataId === 'monkey') {
-                         if (this.team.length > 0) {
-                             const friend = this.team[0]; // Front friend
-                             friend.atk += 2 * pet.getDisplayLevel();
-                             friend.hp += 3 * pet.getDisplayLevel();
+                         const frontFriend = this.team.find(p => p !== null);
+                         if (frontFriend) {
+                             frontFriend.atk += 2 * pet.getDisplayLevel();
+                             frontFriend.hp += 3 * pet.getDisplayLevel();
                          }
                      }
                      // Bison: Self buff if lvl 3 friend exists
                      else if (pet.dataId === 'bison') {
-                         const hasLvl3 = this.team.some(p => p !== pet && p.getDisplayLevel() === 3);
+                         const hasLvl3 = this.team.some(p => p && p !== pet && p.getDisplayLevel() === 3);
                          if (hasLvl3) {
                              pet.atk += 2 * pet.getDisplayLevel();
                              pet.hp += 2 * pet.getDisplayLevel();
@@ -889,57 +879,12 @@
                      // Penguin: Buff lvl 2/3 friends
                      else if (pet.dataId === 'penguin') {
                          this.team.forEach(friend => {
-                             if (friend !== pet && friend.getDisplayLevel() >= 2) {
+                             if (friend && friend !== pet && friend.getDisplayLevel() >= 2) {
                                  friend.atk += 1 * pet.getDisplayLevel();
                                  friend.hp += 1 * pet.getDisplayLevel();
                              }
                          });
                      }
-                });
-                this.render();
-            }                // End of turn triggers (Shop phase end)
-                // Monkey: Buff front friend
-                // Note: With flex-direction: row-reverse, index 0 is Visual Right (Front).
-                // So team[0] is the front-most pet.
-                this.team.forEach((p, index) => {
-                    if (p.dataId === 'monkey') {
-                        if (this.team.length > 0) {
-                             const frontPet = this.team[0]; // Front is index 0
-                             // Monkey buffs front friend. If Monkey IS front?
-                             // "Give front-most friend". Usually implies other? 
-                             // SAP Wiki: "Give right-most friend". If Monkey is right-most, it buffs itself? 
-                             // Usually "friend" means any ally including self unless specified "other".
-                             // But Monkey usually sits in back.
-                             // Let's assume index 0.
-                             frontPet.atk += 2 * p.getDisplayLevel();
-                             frontPet.hp += 3 * p.getDisplayLevel();
-                        }
-                    } else if (p.dataId === 'giraffe') {
-                        // Buff friend ahead (lower index)
-                        if (index > 0) {
-                            const friend = this.team[index - 1];
-                            friend.atk += 1 * p.getDisplayLevel();
-                            friend.hp += 1 * p.getDisplayLevel();
-                        }
-                    } else if (p.dataId === 'penguin') {
-                        // Buff other lvl 2/3 friends
-                        this.team.forEach(friend => {
-                            if (friend !== p && friend.getDisplayLevel() >= 2) {
-                                friend.atk += 1 * p.getDisplayLevel();
-                                friend.hp += 1 * p.getDisplayLevel();
-                            }
-                        });
-                    } else if (p.dataId === 'bison') {
-                        // If there is a level 3 friend
-                        const hasLvl3 = this.team.some(friend => friend !== p && friend.getDisplayLevel() === 3);
-                        if (hasLvl3) {
-                            p.atk += 2 * p.getDisplayLevel();
-                            p.hp += 2 * p.getDisplayLevel();
-                        }
-                    } else if (p.dataId === 'parrot') {
-                        // Copy ability of friend ahead
-                        // Not implemented yet
-                    }
                 });
                 this.render();
             }
@@ -1043,8 +988,39 @@
                         }
 
                         this.shopPets.splice(shopIndex, 1);
+                        return;
+                    } 
+                    
+                    // Insertion Logic: If occupied and not merge, try to shift pets to make room
+                    let emptyIndex = -1;
+                    let minDist = 999;
+                    
+                    for(let i=0; i<5; i++) {
+                        if (this.team[i] === null) {
+                            const dist = Math.abs(i - teamIndex);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                emptyIndex = i;
+                            }
+                        }
                     }
-                    return;
+                    
+                    if (emptyIndex !== -1) {
+                        if (emptyIndex > teamIndex) {
+                            // Shift Right
+                            for (let k = emptyIndex; k > teamIndex; k--) {
+                                this.team[k] = this.team[k-1];
+                            }
+                        } else {
+                            // Shift Left
+                            for (let k = emptyIndex; k < teamIndex; k++) {
+                                this.team[k] = this.team[k+1];
+                            }
+                        }
+                        this.team[teamIndex] = null; // Slot is now available
+                    } else {
+                        return; // No space to insert
+                    }
                 }
 
                 // Place in empty slot
@@ -1056,9 +1032,9 @@
                     // Dragon Trigger (Buy Tier 1)
                     if (pet.tier === 1) {
                         this.team.forEach(p => {
-                            if (p.dataId === 'dragon') {
+                            if (p && p.dataId === 'dragon') {
                                 this.team.forEach(friend => {
-                                    if (friend !== p) {
+                                    if (friend && friend !== p) {
                                         friend.atk += 1 * p.getDisplayLevel();
                                         friend.hp += 1 * p.getDisplayLevel();
                                     }
@@ -1069,7 +1045,7 @@
 
                     // On Buy Triggers (Self)
                     if (pet.dataId === 'otter') {
-                        const friends = this.team.filter(p => p !== pet);
+                        const friends = this.team.filter(p => p && p !== pet);
                         if (friends.length > 0) {
                             const friend = friends[Math.floor(Math.random() * friends.length)];
                             friend.atk += 1 * pet.getDisplayLevel();
@@ -1078,7 +1054,7 @@
                     } else if (pet.dataId === 'snail') {
                         if (this.lastBattleResult === 'loss') {
                              this.team.forEach(p => {
-                                 if (p !== pet) {
+                                 if (p && p !== pet) {
                                      p.atk += 1 * pet.getDisplayLevel();
                                      p.hp += 1 * pet.getDisplayLevel();
                                  }
@@ -1094,7 +1070,7 @@
 
                     // On Friend Summoned Triggers (e.g., Horse, Dog)
                     this.team.forEach(p => {
-                        if (p !== pet) {
+                        if (p && p !== pet) {
                             if (p.dataId === 'horse') {
                                 pet.tempAtk += 1 * p.getDisplayLevel();
                             } else if (p.dataId === 'dog') {
@@ -1121,7 +1097,7 @@
                 // Calculate Multiplier (Cat)
                 let multiplier = 1;
                 this.team.forEach(p => {
-                    if (p.dataId === 'cat') multiplier += p.getDisplayLevel();
+                    if (p && p.dataId === 'cat') multiplier += p.getDisplayLevel();
                 });
                 
                 const statBoost = (val) => val * multiplier;
@@ -1154,7 +1130,7 @@
                          this.handleLevelUp(pet);
                      }
                 } else if (foodId === 'sushi') {
-                    const targets = [...this.team];
+                    const targets = this.team.filter(p => p !== null);
                     for(let k=0; k<3; k++) {
                         if(targets.length > 0) {
                             const r = Math.floor(Math.random()*targets.length);
@@ -1164,7 +1140,7 @@
                         }
                     }
                 } else if (foodId === 'salad') {
-                    const targets = [...this.team];
+                    const targets = this.team.filter(p => p !== null);
                      for(let k=0; k<2; k++) {
                         if(targets.length > 0) {
                             const r = Math.floor(Math.random()*targets.length);
@@ -1180,18 +1156,19 @@
                     pet.item = 'coconut'; 
                 } else if (foodId === 'pill') {
                     const deadPet = this.team[teamIndex];
-                    this.team.splice(teamIndex, 1);
+                    this.team[teamIndex] = null;
+                    
                     // Trigger Faint (Permanent)
                     if (deadPet.dataId === 'ant') {
-                         const friends = this.team;
+                         const friends = this.team.filter(p => p !== null);
                          if (friends.length > 0) {
                              const f = friends[Math.floor(Math.random() * friends.length)];
                              f.atk += 2 * deadPet.getDisplayLevel();
                              f.hp += 1 * deadPet.getDisplayLevel();
                          }
                     } else if (deadPet.dataId === 'flamingo') {
-                         for (let k=0; k<2; k++) {
-                             if (teamIndex + k < this.team.length) {
+                         for (let k=1; k<=2; k++) {
+                             if (teamIndex + k < this.team.length && this.team[teamIndex + k]) {
                                  const f = this.team[teamIndex + k];
                                  f.atk += 1 * deadPet.getDisplayLevel();
                                  f.hp += 1 * deadPet.getDisplayLevel();
@@ -1199,8 +1176,10 @@
                          }
                     } else if (deadPet.dataId === 'mammoth') {
                          this.team.forEach(p => {
-                             p.atk += 2 * deadPet.getDisplayLevel();
-                             p.hp += 2 * deadPet.getDisplayLevel();
+                             if (p) {
+                                 p.atk += 2 * deadPet.getDisplayLevel();
+                                 p.hp += 2 * deadPet.getDisplayLevel();
+                             }
                          });
                     } else if (deadPet.dataId === 'spider') {
                         // Spawn random Tier 3
@@ -1210,7 +1189,7 @@
                         summon.atk = 2; summon.hp = 2; 
                         summon.xp = (deadPet.getDisplayLevel() === 3 ? 5 : (deadPet.getDisplayLevel() === 2 ? 2 : 0));
                         summon.level = deadPet.getDisplayLevel();
-                        this.team.splice(teamIndex, 0, summon);
+                        this.team[teamIndex] = summon;
                     } else if (deadPet.dataId === 'eagle') {
                         const tier6Pets = TIERS[6].pets;
                         if (tier6Pets && tier6Pets.length > 0) {
@@ -1220,18 +1199,18 @@
                              summon.atk = d.atk; summon.hp = d.hp;
                              summon.xp = (deadPet.getDisplayLevel() === 3 ? 5 : (deadPet.getDisplayLevel() === 2 ? 2 : 0));
                              summon.level = deadPet.getDisplayLevel();
-                             this.team.splice(teamIndex, 0, summon);
+                             this.team[teamIndex] = summon;
                         }
                     } else if (deadPet.dataId === 'deer') {
                         const summon = new Pet(null, 'bus');
                         summon.atk = 5 * deadPet.getDisplayLevel();
                         summon.hp = 5 * deadPet.getDisplayLevel();
                         summon.item = 'chili';
-                        this.team.splice(teamIndex, 0, summon);
+                        this.team[teamIndex] = summon;
                     } else if (deadPet.dataId === 'turtle') {
                         const count = deadPet.getDisplayLevel();
-                        for (let k = 0; k < count; k++) {
-                            if (teamIndex + k < this.team.length) {
+                        for (let k = 1; k <= count; k++) {
+                            if (teamIndex + k < this.team.length && this.team[teamIndex + k]) {
                                 this.team[teamIndex + k].item = 'melon';
                             }
                         }
@@ -1248,7 +1227,7 @@
 
                 // Seal Logic
                 if (pet.dataId === 'seal') {
-                    const friends = this.team.filter(p => p !== pet);
+                    const friends = this.team.filter(p => p && p !== pet);
                     if (friends.length > 0) {
                         const targets = [];
                         const indices = friends.map((_, i) => i);
@@ -1271,7 +1250,7 @@
                 if (foodId !== 'pill') { // Pill kills, so rabbit might not trigger on dead? Or triggers before?
                     // Rabbit says "Friend eats food".
                     this.team.forEach(p => {
-                        if (p !== pet && p.dataId === 'rabbit') {
+                        if (p && p !== pet && p.dataId === 'rabbit') {
                             pet.hp += 1 * p.getDisplayLevel();
                         }
                     });
@@ -1288,7 +1267,7 @@
                 if (pet.dataId === 'pig') refund += pet.getDisplayLevel();
                 
                 if (pet.dataId === 'beaver') {
-                    const friends = this.team.filter((_, i) => i !== index);
+                    const friends = this.team.filter((p, i) => p && i !== index);
                     for (let k=0; k<2; k++) {
                         if(friends.length > 0) {
                             const r = Math.floor(Math.random()*friends.length);
@@ -1303,8 +1282,8 @@
                 
                 // Trigger Shrimp
                 this.team.forEach(p => {
-                    if (p !== pet && p.dataId === 'shrimp') {
-                        const friends = this.team.filter(f => f !== pet && f !== p);
+                    if (p && p !== pet && p.dataId === 'shrimp') {
+                        const friends = this.team.filter(f => f && f !== pet && f !== p);
                         if (friends.length > 0) {
                             friends[Math.floor(Math.random() * friends.length)].hp += 1 * p.getDisplayLevel();
                         }
@@ -1312,7 +1291,7 @@
                 });
 
                 this.gold += refund;
-                this.team.splice(index, 1);
+                this.team[index] = null;
                 this.selectedTeamIndex = -1;
                 this.render();
             }
@@ -1329,22 +1308,28 @@
             movePet(fromIndex, toIndex) {
                 if (toIndex < 0 || toIndex >= 5 || fromIndex === toIndex) return;
                 
-                const target = this.team[toIndex];
                 const source = this.team[fromIndex];
+                if (!source) return;
+
+                const target = this.team[toIndex];
                 
                 if (target && target.dataId === source.dataId && target.xp < 5) {
-                    // Merge
-                    target.xp += 1 + Math.floor(source.xp); // Merge XP
+                    // Merge logic
+                    const oldLevel = target.getDisplayLevel();
+                    
+                    // SAP Merge: +1/+1 and gain XP
+                    target.xp = Math.min(5, target.xp + source.xp + 1);
                     target.atk = Math.max(target.atk, source.atk) + 1;
                     target.hp = Math.max(target.hp, source.hp) + 1;
-                    this.team.splice(fromIndex, 1);
+                    
+                    if (target.getDisplayLevel() > oldLevel) {
+                        this.handleLevelUp(target);
+                    }
+                    this.team[fromIndex] = null;
                 } else {
-                    // Swap
-                    while(this.team.length <= Math.max(fromIndex, toIndex)) this.team.push(null);
-                    const temp = this.team[toIndex];
-                    this.team[toIndex] = this.team[fromIndex];
-                    this.team[fromIndex] = temp;
-                    this.team = this.team.filter(p => p !== null);
+                    // Swap logic
+                    this.team[toIndex] = source;
+                    this.team[fromIndex] = target;
                 }
                 
                 this.render();
@@ -1366,15 +1351,17 @@
             }
 
             cloneTeam(team) {
-                return team.map(p => {
-                    const np = new Pet(null, p.dataId, p.xp);
-                    np.atk = p.atk;
-                    np.hp = p.hp;
-                    np.item = p.item;
-                    np.atk += p.tempAtk;
-                    np.hp += p.tempHp;
-                    return np;
-                });
+                return team
+                    .filter(p => p !== null) // Only clone actual pets
+                    .map(p => {
+                        const np = new Pet(null, p.dataId, p.xp);
+                        np.atk = p.atk;
+                        np.hp = p.hp;
+                        np.item = p.item;
+                        np.atk += p.tempAtk;
+                        np.hp += p.tempHp;
+                        return np;
+                    });
             }
 
             generateEnemyTeam() {
@@ -1408,13 +1395,17 @@
                 
                 this.turn++;
                 this.gold = 10;
-                this.onTurnStart();
                 
+                // Reset temps
                 this.team.forEach(p => {
-                    p.tempAtk = 0;
-                    p.tempHp = 0;
+                    if (p) {
+                        p.tempAtk = 0;
+                        p.tempHp = 0;
+                    }
                 });
 
+                this.onTurnStart();
+                
                 if (this.lives <= 0) {
                     alert('游戏结束! 你输了。');
                     location.reload();
@@ -1424,7 +1415,7 @@
                 } else {
                     this.state = 'shop';
                     this.rollShop(); 
-                    this.render();
+                    // render is called in rollShop
                 }
             }
             
@@ -1576,135 +1567,124 @@
             async handleFaint(team, index, otherTeam) {
                 const pet = team[index];
                 
-                let summon = null;
-                if (pet.dataId === 'cricket') {
-                    summon = new Pet(null, 'zombie_cricket');
-                    summon.atk = 1 * pet.getDisplayLevel();
-                    summon.hp = 1 * pet.getDisplayLevel();
-                } else if (pet.dataId === 'spider') {
-                    const tier3Pets = TIERS[3].pets;
-                    const randomId = tier3Pets[Math.floor(Math.random() * tier3Pets.length)];
-                    summon = new Pet(null, randomId);
-                    summon.atk = 2; summon.hp = 2; 
-                    summon.xp = (pet.getDisplayLevel() === 3 ? 5 : (pet.getDisplayLevel() === 2 ? 2 : 0));
+                let tigerLevel = 0;
+                if (index + 1 < team.length) {
+                    const behind = team[index+1];
+                    if (behind && behind.dataId === 'tiger') {
+                        tigerLevel = behind.getDisplayLevel();
+                    }
                 }
-
-                await this.triggerSpecificAbility(pet, 'faint', team, otherTeam);
+                const loops = 1 + (tigerLevel > 0 ? 1 : 0);
                 
-                // Rat Faint (Dirty Rat on other team)
-                if (pet.dataId === 'rat') {
-                    if (otherTeam.length < 5) {
-                         const dr = new Pet(null, 'dirty_rat');
-                         otherTeam.push(dr); // Add to back? Front? 
-                         // Dirty Rat spawns at front (index 0)? "Opponent's side". Usually front.
-                         // But if space is full...
-                         // Let's push to front (index 0) for opponent?
-                         // In `team` array (reverse visual), index 0 is front.
-                         otherTeam.unshift(dr);
-                         // But array limit is 5.
-                         if (otherTeam.length > 5) otherTeam.pop();
+                const petSummons = [];
+                const itemSummons = [];
+
+                // --- Pet Ability Loop ---
+                for (let i = 0; i < loops; i++) {
+                     if (i === 1) pet.levelOverride = tigerLevel;
+
+                     let s = null;
+                     if (pet.dataId === 'cricket') {
+                         s = new Pet(null, 'zombie_cricket');
+                         s.atk = 1 * pet.getDisplayLevel();
+                         s.hp = 1 * pet.getDisplayLevel();
+                     } else if (pet.dataId === 'spider') {
+                         const tier3Pets = TIERS[3].pets;
+                         const randomId = tier3Pets[Math.floor(Math.random() * tier3Pets.length)];
+                         s = new Pet(null, randomId);
+                         s.atk = 2; s.hp = 2; 
+                         s.xp = (pet.getDisplayLevel() === 3 ? 5 : (pet.getDisplayLevel() === 2 ? 2 : 0));
+                         s.level = pet.getDisplayLevel();
+                     } else if (pet.dataId === 'deer') {
+                         s = new Pet(null, 'bus');
+                         s.atk = 5 * pet.getDisplayLevel();
+                         s.hp = 5 * pet.getDisplayLevel();
+                         s.item = 'chili'; 
+                     } else if (pet.dataId === 'eagle') {
+                          const tier6Pets = TIERS[6].pets;
+                          if (tier6Pets && tier6Pets.length > 0) {
+                              const randomId = tier6Pets[Math.floor(Math.random() * tier6Pets.length)];
+                              s = new Pet(null, randomId);
+                              const d = PET_DATA[randomId];
+                              s.atk = d.atk; s.hp = d.hp;
+                              s.xp = (pet.getDisplayLevel() === 3 ? 5 : (pet.getDisplayLevel() === 2 ? 2 : 0));
+                              s.level = pet.getDisplayLevel();
+                          }
+                     } else if (pet.dataId === 'whale' && pet.swallowedPet) {
+                         const saved = pet.swallowedPet;
+                         s = new Pet(null, saved.dataId);
+                         const d = PET_DATA[saved.dataId];
+                         s.atk = d.atk; s.hp = d.hp;
+                         const lvl = pet.getDisplayLevel();
+                         s.xp = (lvl === 3 ? 5 : (lvl === 2 ? 2 : 0));
+                         s.level = lvl;
+                     }
+                     
+                     if (s) petSummons.push(s);
+
+                     if (pet.dataId === 'sheep') {
+                         const ram1 = new Pet(null, 'ram');
+                         ram1.atk = 2 * pet.getDisplayLevel(); ram1.hp = 2 * pet.getDisplayLevel();
+                         const ram2 = new Pet(null, 'ram');
+                         ram2.atk = 2 * pet.getDisplayLevel(); ram2.hp = 2 * pet.getDisplayLevel();
+                         petSummons.push(ram1, ram2);
+                     }
+                     
+                     if (pet.dataId === 'rooster') {
+                         const chick = new Pet(null, 'chick');
+                         chick.atk = Math.max(1, Math.floor(pet.atk * 0.5));
+                         chick.hp = 1;
+                         petSummons.push(chick);
+                     }
+                     
+                     if (pet.dataId === 'rat') {
+                         if (otherTeam.length < 5) {
+                              const dr = new Pet(null, 'dirty_rat');
+                              otherTeam.unshift(dr);
+                              if (otherTeam.length > 5) otherTeam.pop();
+                         }
+                     }
+                     
+                     if (pet.dataId === 'turtle') {
+                         const count = pet.getDisplayLevel();
+                         for (let k = 1; k <= count; k++) {
+                             if (index + k < team.length) {
+                                 team[index + k].item = 'melon';
+                             }
+                         }
+                     }
+
+                     await this.triggerSpecificAbility(pet, 'faint', team, otherTeam);
+                     
+                     if (i === 1) pet.levelOverride = null;
+                }
+
+                // --- Item Logic (Once) ---
+                if (pet.item === 'honey') {
+                     const bee = new Pet(null, 'bee');
+                     itemSummons.push(bee);
+                }
+                if (pet.item === 'mushroom') {
+                    const revived = new Pet(null, pet.dataId);
+                    revived.atk = 1; revived.hp = 1;
+                    revived.xp = pet.xp;
+                    revived.level = pet.getDisplayLevel();
+                    revived.item = null;
+                    itemSummons.push(revived);
+                }
+                
+                // --- Apply Summons ---
+                const allSummons = [...petSummons, ...itemSummons];
+                const space = 5 - (team.length - 1);
+                
+                if (allSummons.length > 0 && space > 0) {
+                    const toAdd = allSummons.slice(0, space);
+                    team.splice(index, 1, ...toAdd);
+                    for(const s of toAdd) {
+                        await this.triggerAbility('summoned', team, otherTeam, s);
                     }
-                }
-
-                // Honey
-                if (pet.item === 'honey' && !summon) {
-                     summon = new Pet(null, 'bee');
-                }
-
-                // Mushroom
-                if (pet.item === 'mushroom' && !summon) {
-                    summon = new Pet(null, pet.dataId);
-                    summon.atk = 1; 
-                    summon.hp = 1;
-                    summon.xp = pet.xp;
-                    summon.level = pet.getDisplayLevel();
-                    summon.item = null;
-                }
-
-                // Deer
-                if (pet.dataId === 'deer' && !summon) {
-                    summon = new Pet(null, 'bus');
-                    summon.atk = 5 * pet.getDisplayLevel();
-                    summon.hp = 5 * pet.getDisplayLevel();
-                    summon.item = 'chili'; 
-                }
-
-                // Eagle
-                if (pet.dataId === 'eagle' && !summon) {
-                     const tier6Pets = TIERS[6].pets;
-                     if (tier6Pets && tier6Pets.length > 0) {
-                         const randomId = tier6Pets[Math.floor(Math.random() * tier6Pets.length)];
-                         summon = new Pet(null, randomId);
-                         const d = PET_DATA[randomId];
-                         summon.atk = d.atk; 
-                         summon.hp = d.hp;
-                         summon.xp = (pet.getDisplayLevel() === 3 ? 5 : (pet.getDisplayLevel() === 2 ? 2 : 0));
-                         summon.level = pet.getDisplayLevel();
-                     }
-                }
-
-                // Whale (Release Swallowed)
-                if (pet.dataId === 'whale' && pet.swallowedPet) {
-                    const saved = pet.swallowedPet;
-                    summon = new Pet(null, saved.dataId);
-                    const d = PET_DATA[saved.dataId];
-                    summon.atk = d.atk; 
-                    summon.hp = d.hp;
-                    
-                    const lvl = pet.getDisplayLevel();
-                    summon.xp = (lvl === 3 ? 5 : (lvl === 2 ? 2 : 0));
-                    summon.level = lvl;
-                }
-
-                // Turtle
-                if (pet.dataId === 'turtle') {
-                    const count = pet.getDisplayLevel();
-                    for (let k = 1; k <= count; k++) {
-                        if (index + k < team.length) {
-                            team[index + k].item = 'melon';
-                        }
-                    }
-                }
-
-                // Sheep
-                if (pet.dataId === 'sheep') {
-                     // Special case: Summon 2 rams
-                     team.splice(index, 1);
-                     for(let k=0; k<2; k++) {
-                         if (team.length < 5) {
-                             const ram = new Pet(null, 'ram');
-                             ram.atk = 2 * pet.getDisplayLevel(); ram.hp = 2 * pet.getDisplayLevel();
-                             team.splice(index, 0, ram);
-                             await this.triggerAbility('summoned', team, otherTeam, ram);
-                         }
-                     }
-                } else if (pet.dataId === 'rooster') {
-                     // Check Tiger
-                     let extra = 0;
-                     if (index + 1 < team.length) {
-                         const behind = team[index+1];
-                         if (behind && behind.dataId === 'tiger') {
-                             extra = behind.getDisplayLevel();
-                         }
-                     }
-
-                     // Rooster: Summon Chicks
-                     team.splice(index, 1);
-                     const num = pet.getDisplayLevel() + extra;
-                     for(let k=0; k<num; k++) {
-                         if (team.length < 5) {
-                             const chick = new Pet(null, 'chick');
-                             chick.atk = Math.max(1, Math.floor(pet.atk * 0.5));
-                             chick.hp = 1;
-                             team.splice(index, 0, chick);
-                             await this.triggerAbility('summoned', team, otherTeam, chick);
-                         }
-                     }
-                } else if (summon) {
-                    team[index] = summon;
-                    await this.triggerAbility('summoned', team, otherTeam, summon);
                 } else {
-                     team.splice(index, 1);
+                    team.splice(index, 1);
                 }
                 
                 // Fly Check (Global check after any faint)
@@ -1712,17 +1692,31 @@
                 if (flies.length > 0) {
                     for(const fly of flies) {
                         if (!fly.flyUses) fly.flyUses = 0;
-                        if (fly.flyUses < 3 * fly.getDisplayLevel() && team.length < 5) { // 3 times per battle * Level? Or just 3? SAP is 3 times.
-                            // Logic: Summon 5/5 Zombie Fly at the location of fainted pet (index).
-                            // But team array has shifted if we spliced.
-                            // We need to insert at 'index'.
+                        if (fly.flyUses < 3 * fly.getDisplayLevel() && team.length < 5) { 
                             const zf = new Pet(null, 'zombie_fly');
                             zf.atk = 5 * fly.getDisplayLevel();
                             zf.hp = 5 * fly.getDisplayLevel();
-                            team.splice(index, 0, zf); // Insert where friend died
-                            fly.flyUses++;
-                            await this.triggerAbility('summoned', team, otherTeam, zf);
-                            break; // Only one fly triggers? Or all? Usually closest or strongest. Let's trigger one for now.
+                            // Insert where friend died.
+                            // If summons filled the spot, insert after them?
+                            // Usually Fly summons at the spot of death.
+                            // If death spot is occupied by summons (e.g. Cricket -> Zombie), Fly summons BEHIND Zombie?
+                            // Or does Fly summon trigger first?
+                            // "Friend faints -> Summon Zombie Fly".
+                            // "Cricket Faints -> Summon Zombie Cricket".
+                            // Order: Attack.
+                            // If Fly has higher attack than Cricket?
+                            // Complex.
+                            // Simplified: Insert at `index` (pushing others back).
+                            // `index` is now the start of new summons (if any).
+                            // If we added summons, `index` points to the first summon.
+                            // Fly should spawn there?
+                            // Let's spawn at `index`.
+                            if (team.length < 5) {
+                                team.splice(index, 0, zf);
+                                fly.flyUses++;
+                                await this.triggerAbility('summoned', team, otherTeam, zf);
+                                break; 
+                            }
                         }
                     }
                 }
@@ -2065,6 +2059,7 @@
         
         document.getElementById('btn-start-game').onclick = () => {
             document.getElementById('start-menu').style.display = 'none';
+            game.render();
         };
 
         document.getElementById('btn-help').onclick = () => document.getElementById('help-modal').style.display = 'flex';
